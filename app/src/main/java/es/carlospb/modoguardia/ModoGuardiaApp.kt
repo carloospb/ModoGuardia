@@ -1,0 +1,65 @@
+package es.carlospb.modoguardia
+
+import android.app.Application
+import android.content.Context
+import es.carlospb.modoguardia.alarm.AlarmController
+import es.carlospb.modoguardia.alarm.AlarmState
+import es.carlospb.modoguardia.alarm.GuardNotifications
+import es.carlospb.modoguardia.alarm.VolumeRestore
+import es.carlospb.modoguardia.data.HistoryDatabase
+import es.carlospb.modoguardia.data.HistoryRepository
+import es.carlospb.modoguardia.data.SettingsRepository
+import es.carlospb.modoguardia.data.guardDataStore
+import es.carlospb.modoguardia.domain.Deduplicator
+import es.carlospb.modoguardia.domain.GuardEngine
+import es.carlospb.modoguardia.service.DiagnosticsStore
+import es.carlospb.modoguardia.service.GuardController
+import es.carlospb.modoguardia.system.SystemStatusChecker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+
+/** Dependencias del proceso, creadas una vez. Sin framework de DI: el grafo es pequeño. */
+class AppContainer(app: Application) {
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val settings = SettingsRepository(app.guardDataStore)
+    private val database = HistoryDatabase.create(app)
+    val history = HistoryRepository(database.historyDao())
+    val diagnostics = DiagnosticsStore()
+    val alarmController = AlarmController(app, settings, history, appScope)
+    val engine = GuardEngine(
+        snapshot = { settings.current().toSnapshot() },
+        dedup = Deduplicator(),
+        alarm = alarmController,
+        history = history,
+    )
+    val guardController = GuardController(app, settings, history, engine)
+    val statusChecker = SystemStatusChecker(app)
+}
+
+class ModoGuardiaApp : Application() {
+    lateinit var container: AppContainer
+        private set
+
+    override fun onCreate() {
+        super.onCreate()
+        container = AppContainer(this)
+        GuardNotifications.ensureChannels(this)
+        // Si el proceso murió con la alarma sonando, el volumen de alarma vuelve a su valor.
+        if (AlarmState.active.value == null) VolumeRestore.restoreIfPending(this)
+
+        val c = container
+        c.appScope.launch {
+            c.settings.settings.map { it.diagnosticsEnabled }.distinctUntilChanged().collect(c.diagnostics::setEnabled)
+        }
+        // Si el proceso arranca (p. ej. lo enlaza el lector de notificaciones) con la guardia activa
+        // y sin su servicio, se reanuda.
+        c.appScope.launch { c.guardController.ensureServiceRunning() }
+    }
+}
+
+val Context.container: AppContainer
+    get() = (applicationContext as ModoGuardiaApp).container

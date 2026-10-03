@@ -1,0 +1,26 @@
+# Salida de compilacion
+build/
+app/build/
+.gradle/
+.kotlin/
+dist/
+
+# Configuracion local de la maquina (ruta del SDK)
+local.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.cxx/
+captures/
+
+# Firma: nunca se versiona una clave
+*.jks
+*.keystore
+keystore.properties
+
+# Temporales
+*.log
+*.tmp
+node_modules/

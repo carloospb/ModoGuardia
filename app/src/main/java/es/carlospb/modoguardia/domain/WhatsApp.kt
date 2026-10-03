@@ -1,0 +1,37 @@
+package es.carlospb.modoguardia.domain
+
+/**
+ * Lectura de la estructura de las notificaciones de WhatsApp.
+ *
+ * WhatsApp no documenta su formato y cambia entre versiones, así que no se asume una sola forma.
+ * Se reúnen como candidatos a "nombre del grupo" todos los campos donde las versiones conocidas
+ * lo ponen, y una regla de grupo solo coincide si su nombre es IGUAL (normalizado) a alguno:
+ *
+ *  * `conversationTitle` (MessagingStyle, Android 7+): el nombre del grupo.
+ *  * `title` con la forma "Grupo: Remitente" o "Grupo (3 mensajes): Remitente".
+ *  * `title` con la forma antigua "Remitente @ Grupo".
+ *  * `title` completo cuando la app marca la conversación como grupal.
+ *
+ * Si no hay ningún candidato, el grupo NO se inventa: el motor lo informa como "no identificado".
+ */
+object WhatsApp {
+    val PACKAGES: Set<String> = setOf("com.whatsapp", "com.whatsapp.w4b")
+
+    fun isWhatsApp(packageName: String): Boolean = packageName in PACKAGES
+
+    fun groupCandidates(event: NotificationEvent): List<String> {
+        val out = LinkedHashSet<String>()
+        event.conversationTitle?.let { out += TextNormalizer.clean(it) }
+        event.title?.let { raw ->
+            val title = TextNormalizer.clean(raw)
+            val first = title.indexOf(": ")
+            if (first > 0) out += title.substring(0, first)
+            val last = title.lastIndexOf(": ")
+            if (last > 0 && last != first) out += title.substring(0, last)
+            val at = title.indexOf(" @ ")
+            if (at > 0) out += title.substring(at + 3)
+            if (event.isGroupConversation == true) out += title
+        }
+        return out.filter { it.isNotBlank() }
+    }
+}

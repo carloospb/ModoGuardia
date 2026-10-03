@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La interfaz es Compose; este tema solo evita el destello blanco al arrancar. -->
+    <style name="Theme.ModoGuardia" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/guard_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.ModoGuardia.Alarm">
+        <item name="android:windowBackground">@color/guard_alarm_background</item>
+    </style>
+</resources>

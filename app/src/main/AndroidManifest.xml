@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    MODO GUARDIA — manifiesto.
+    Solo los permisos imprescindibles. NO hay permiso INTERNET: nada sale del dispositivo.
+    Detalle y motivo de cada permiso en docs/PERMISOS.md.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Android 13+: mostrar la notificacion de guardia, la de alarma y los avisos de fallo. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Servicio de guardia persistente (specialUse) y servicio que reproduce la alarma (mediaPlayback). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Abrir la pantalla de alerta sobre la pantalla de bloqueo (full-screen intent).
+         Android 14+ puede retirarlo: la app lo comprueba con canUseFullScreenIntent(). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- Mantener la CPU despierta mientras suena la alarma (MediaPlayer.setWakeMode). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Vibracion de la alarma. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Restaurar Modo Guardia tras reiniciar el telefono. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Pedir al usuario que excluya la app de la optimizacion de bateria (Doze). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Solo si el usuario activa "Despertar con llamadas": saber que el telefono esta sonando
+         (RINGING) o se ha contestado (OFFHOOK). NO da acceso al numero (eso exigiria
+         READ_CALL_LOG, que no se pide). Se solicita en tiempo de ejecucion. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
+    <!-- Android 11+: ver las apps con icono en el lanzador para elegirlas en las reglas,
+         sin QUERY_ALL_PACKAGES. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".ModoGuardiaApp"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ModoGuardia"
+        tools:targetApi="35">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Pantalla de alerta. Visible sobre el bloqueo y enciende la pantalla. -->
+        <activity
+            android:name=".alarm.GuardAlarmActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:taskAffinity="es.carlospb.modoguardia.alarm"
+            android:theme="@style/Theme.ModoGuardia.Alarm"
+            android:turnScreenOn="true" />
+
+        <!-- Lector de notificaciones: el usuario lo autoriza en Ajustes. -->
+        <service
+            android:name=".service.GuardNotificationListener"
+            android:exported="true"
+            android:label="@string/listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+            <!-- Android 12+: pedir todos los tipos, incluidas las silenciosas y las llamadas en curso. -->
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="conversations|alerting|ongoing|silent" />
+        </service>
+
+        <!-- Servicio de guardia: mantiene vivo el proceso mientras Modo Guardia esta activo. -->
+        <service
+            android:name=".service.GuardService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Vigilancia de guardia laboral activada por el usuario: mantiene listo el sistema que dispara una alarma cuando llega una notificacion o llamada que cumple sus reglas." />
+        </service>
+
+        <!-- Reproduce la alarma (sonido + vibracion) hasta que el usuario la detiene. -->
+        <service
+            android:name=".alarm.AlarmService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Solo recibe algo si el usuario concedio READ_PHONE_STATE. -->
+        <receiver
+            android:name=".call.PhoneStateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

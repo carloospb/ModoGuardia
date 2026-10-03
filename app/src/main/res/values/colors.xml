@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="guard_background">#FF0A0E13</color>
+    <color name="guard_alarm_background">#FF3A0508</color>
+    <color name="ic_launcher_background">#FF0A0E13</color>
+</resources>
