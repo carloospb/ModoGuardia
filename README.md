@@ -11,7 +11,8 @@ para hasta que pulsas **DETENER ALARMA**.
 ## Qué hace
 
 * **Reglas** («¿Qué debe despertarme?»): cualquier aviso de una app · cualquier WhatsApp · un
-  **grupo de WhatsApp** concreto · **palabras clave** (cualquiera / todas, con o sin mayúsculas y
+  **grupo o chat individual de WhatsApp** concreto, elegido de una lista con aspecto de WhatsApp
+  (los chats de los que ya llegó algún aviso) o escrito a mano · **palabras clave** (cualquiera / todas, con o sin mayúsculas y
   tildes), en una app o en todas.
 * **Llamadas**: cualquier llamada telefónica entrante y, aparte, llamadas de apps (WhatsApp,
   Teams…). La llamada funciona con normalidad; la alarma se para al contestar.

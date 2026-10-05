@@ -9,6 +9,7 @@ import androidx.core.app.NotificationManagerCompat
 import es.carlospb.modoguardia.container
 import es.carlospb.modoguardia.domain.HistoryType
 import es.carlospb.modoguardia.domain.NotificationEvent
+import es.carlospb.modoguardia.domain.SeenChats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,6 +71,8 @@ class GuardNotificationListener : NotificationListenerService() {
         val c = container
         c.diagnostics.record(parsed)
         if (parsed.skipReason != null) return
+        // Para elegir chats de una lista al crear reglas. Solo el nombre, nunca el mensaje.
+        SeenChats.chatOf(parsed.event, System.currentTimeMillis())?.let { chat -> c.appScope.launch { c.seenChats.record(chat) } }
         c.appScope.launch { c.engine.onNotification(parsed.event) }
     }
 

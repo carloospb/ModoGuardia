@@ -17,3 +17,5 @@
 | «Forzar detención» | Android no entrega nada a la app hasta que se abre. | No detectable desde dentro; se explica en Estado. |
 | Llamadas sin `READ_PHONE_STATE` | No llega el estado del teléfono. | Detección de reserva por la notificación del marcador; 🟠 en Estado. |
 | Número de quien llama | Exigiría `READ_CALL_LOG`. | No se pide: se muestra el nombre solo si el marcador lo pone en su aviso. |
+| Lista de chats de WhatsApp | WhatsApp no deja a otras apps leer sus chats (solo con su base de datos o accesibilidad, que no se usan). | «Elegir chats de WhatsApp» lista los grupos y chats de los que ya llegó algún aviso, con el nombre exacto de la notificación; el resto se puede escribir a mano. |
+| Chat individual con el contacto sin guardar | La notificación trae el número o el nombre de perfil, no un nombre de contacto. | La regla usa lo que trae la notificación; elegirlo de la lista evita errores. |

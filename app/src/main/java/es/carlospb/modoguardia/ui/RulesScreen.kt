@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -66,6 +67,7 @@ fun RulesScreen(
     mainVm: MainViewModel,
     onFix: (FixAction) -> Unit,
     onEdit: (String?) -> Unit,
+    onPickChats: () -> Unit,
 ) {
     val rules by rulesVm.rules.collectAsStateWithLifecycle()
     var toDelete by remember { mutableStateOf<Rule?>(null) }
@@ -79,7 +81,7 @@ fun RulesScreen(
     ) {
         SectionTitle("¿Qué debe despertarme?")
         if (rules.isEmpty()) {
-            Text("Todavía no hay reglas. Crea la primera: por app, por WhatsApp, por grupo o por palabras.", color = GuardColors.TextDim)
+            Text("Todavía no hay reglas. Crea la primera: por app, por WhatsApp, por grupo o chat, o por palabras.", color = GuardColors.TextDim)
         }
         rules.forEach { rule ->
             RuleCard(
@@ -90,7 +92,9 @@ fun RulesScreen(
             )
             Spacer(Modifier.height(8.dp))
         }
-        Button(onClick = { onEdit(null) }, modifier = Modifier.fillMaxWidth()) { Text("＋ Añadir regla") }
+        Button(onClick = onPickChats, modifier = Modifier.fillMaxWidth()) { Text("Elegir chats de WhatsApp") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = { onEdit(null) }, modifier = Modifier.fillMaxWidth()) { Text("＋ Otra regla (app, palabras…)") }
 
         SectionTitle("Despertar con llamadas")
         GuardCard {
@@ -162,6 +166,7 @@ private fun ruleIcon(type: RuleType) = when (type) {
     RuleType.APP -> Icons.Filled.Apps
     RuleType.WHATSAPP_ANY -> Icons.AutoMirrored.Filled.Chat
     RuleType.WHATSAPP_GROUP -> Icons.Filled.Groups
+    RuleType.WHATSAPP_CHAT -> Icons.Filled.Person
     RuleType.KEYWORDS -> Icons.Filled.TextFields
 }
 
@@ -169,6 +174,7 @@ private fun ruleSubtitle(rule: Rule): String = when (rule.type) {
     RuleType.APP -> "App · ${rule.packageName}"
     RuleType.WHATSAPP_ANY -> "Cualquier notificación nueva de WhatsApp"
     RuleType.WHATSAPP_GROUP -> "Grupo de WhatsApp"
+    RuleType.WHATSAPP_CHAT -> "Chat de WhatsApp"
     RuleType.KEYWORDS -> (rule.appLabel ?: "Cualquier app") +
         (if (rule.matchAll) " · todas las palabras" else " · cualquiera de las palabras") +
         (if (rule.ignoreCase) " · sin distinguir mayúsculas" else " · distingue mayúsculas")
@@ -193,7 +199,7 @@ fun SwitchRow(title: String, subtitle: String?, checked: Boolean, onChange: (Boo
 
 /** Crear / editar regla. [ruleId] null = nueva. */
 @Composable
-fun RuleEditorScreen(ruleId: String?, rulesVm: RulesViewModel, onDone: () -> Unit) {
+fun RuleEditorScreen(ruleId: String?, rulesVm: RulesViewModel, onPickChats: () -> Unit, onDone: () -> Unit) {
     val rules by rulesVm.rules.collectAsStateWithLifecycle()
     val existing = remember(ruleId, rules) { rules.firstOrNull { it.id == ruleId } }
 
@@ -213,7 +219,7 @@ fun RuleEditorScreen(ruleId: String?, rulesVm: RulesViewModel, onDone: () -> Uni
         enabled = existing?.enabled ?: true,
         packageName = if (type == RuleType.APP || type == RuleType.KEYWORDS) pkg else null,
         appLabel = if (type == RuleType.APP || type == RuleType.KEYWORDS) appLabel else null,
-        groupName = if (type == RuleType.WHATSAPP_GROUP) group.trim() else null,
+        groupName = if (type == RuleType.WHATSAPP_GROUP || type == RuleType.WHATSAPP_CHAT) group.trim() else null,
         keywords = if (type == RuleType.KEYWORDS) keywords else emptyList(),
         matchAll = matchAll,
         ignoreCase = ignoreCase,
@@ -229,6 +235,9 @@ fun RuleEditorScreen(ruleId: String?, rulesVm: RulesViewModel, onDone: () -> Uni
         Text("Tipo", fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
             FilterChip(selected = type == RuleType.WHATSAPP_GROUP, onClick = { type = RuleType.WHATSAPP_GROUP }, label = { Text("Grupo WhatsApp") })
+            FilterChip(selected = type == RuleType.WHATSAPP_CHAT, onClick = { type = RuleType.WHATSAPP_CHAT }, label = { Text("Chat WhatsApp") })
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 6.dp)) {
             FilterChip(selected = type == RuleType.WHATSAPP_ANY, onClick = { type = RuleType.WHATSAPP_ANY }, label = { Text("Cualquier WhatsApp") })
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -238,12 +247,17 @@ fun RuleEditorScreen(ruleId: String?, rulesVm: RulesViewModel, onDone: () -> Uni
         Spacer(Modifier.height(16.dp))
 
         when (type) {
-            RuleType.WHATSAPP_GROUP -> {
+            RuleType.WHATSAPP_GROUP, RuleType.WHATSAPP_CHAT -> {
+                if (existing == null) {
+                    Button(onClick = onPickChats, modifier = Modifier.fillMaxWidth()) { Text("Elegir de mis chats de WhatsApp") }
+                    Hint("Recomendado: el nombre sale de la propia notificación y coincide siempre. O escríbelo a mano:")
+                    Spacer(Modifier.height(8.dp))
+                }
                 OutlinedTextField(
                     value = group,
                     onValueChange = { group = it },
-                    label = { Text("Nombre del grupo") },
-                    placeholder = { Text("GUARDIAS SOPORTE") },
+                    label = { Text(if (type == RuleType.WHATSAPP_GROUP) "Nombre del grupo" else "Nombre del contacto") },
+                    placeholder = { Text(if (type == RuleType.WHATSAPP_GROUP) "GUARDIAS SOPORTE" else "Ana López") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -251,7 +265,8 @@ fun RuleEditorScreen(ruleId: String?, rulesVm: RulesViewModel, onDone: () -> Uni
                     "Escríbelo como aparece en WhatsApp (no importan mayúsculas ni tildes). Se compara con " +
                         "el nombre de conversación que WhatsApp pone en la notificación; si una notificación " +
                         "no lo trae, no se adivina: queda en el historial como «grupo no identificado». " +
-                        "El grupo NO debe estar silenciado en WhatsApp.",
+                        "El chat NO debe estar silenciado en WhatsApp." +
+                        (if (type == RuleType.WHATSAPP_CHAT) " En un chat individual se usa el nombre con el que tienes guardado el contacto." else ""),
                 )
                 WhatsAppInstalled(rulesVm)
             }

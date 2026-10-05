@@ -155,12 +155,19 @@ private fun Root() {
                 )
             }
             composable(Tab.RULES.route) {
-                RulesScreen(s, rulesVm, vm, onFix) { id -> nav.navigate("regla/${id ?: "nueva"}") }
+                RulesScreen(
+                    s, rulesVm, vm, onFix,
+                    onEdit = { id -> nav.navigate("regla/${id ?: "nueva"}") },
+                    onPickChats = { nav.navigate("chats") { launchSingleTop = true } },
+                )
             }
             composable("regla/{id}") { entry ->
                 val id = entry.arguments?.getString("id")?.takeIf { it != "nueva" }
-                RuleEditorScreen(id, rulesVm) { nav.popBackStack() }
+                RuleEditorScreen(id, rulesVm, onPickChats = {
+                    nav.navigate("chats") { popUpTo(Tab.RULES.route) }
+                }) { nav.popBackStack() }
             }
+            composable("chats") { WhatsAppChatsScreen(rulesVm) { nav.popBackStack() } }
             composable(Tab.STATUS.route) { StatusScreen(s, status, vm, onFix) }
             composable(Tab.HISTORY.route) { HistoryScreen(viewModel()) }
             composable(Tab.SETTINGS.route) { SettingsScreen(s, vm, updateVm) { vm.setOnboardingDone(false) } }

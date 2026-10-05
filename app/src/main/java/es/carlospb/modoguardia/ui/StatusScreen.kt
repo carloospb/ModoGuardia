@@ -93,7 +93,7 @@ fun StatusScreen(settings: GuardSettings, status: SystemStatus, vm: MainViewMode
                 settings.rules.filter { it.enabled }.forEach { r ->
                     when (r.type) {
                         RuleType.APP, RuleType.KEYWORDS -> r.packageName?.let(::add)
-                        RuleType.WHATSAPP_ANY, RuleType.WHATSAPP_GROUP -> addAll(WhatsApp.PACKAGES)
+                        RuleType.WHATSAPP_ANY, RuleType.WHATSAPP_GROUP, RuleType.WHATSAPP_CHAT -> addAll(WhatsApp.PACKAGES)
                     }
                 }
             }

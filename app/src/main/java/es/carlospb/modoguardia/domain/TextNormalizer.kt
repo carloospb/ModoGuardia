@@ -22,6 +22,9 @@ object TextNormalizer {
             .replace(diacritics, "")
             .lowercase(Locale.ROOT)
 
+    /** Nombre de grupo para mostrar: limpio y sin sufijo de recuento. Misma [groupKey] que el original. */
+    fun displayGroupName(s: String): String = clean(s).replace(countSuffix, "").trim()
+
     /** Clave de comparación de un nombre de grupo/conversación. */
     fun groupKey(s: String): String = fold(clean(s).replace(countSuffix, ""))
 }

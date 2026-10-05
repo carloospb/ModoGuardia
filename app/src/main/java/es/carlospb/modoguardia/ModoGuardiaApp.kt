@@ -8,6 +8,7 @@ import es.carlospb.modoguardia.alarm.GuardNotifications
 import es.carlospb.modoguardia.alarm.VolumeRestore
 import es.carlospb.modoguardia.data.HistoryDatabase
 import es.carlospb.modoguardia.data.HistoryRepository
+import es.carlospb.modoguardia.data.SeenChatsRepository
 import es.carlospb.modoguardia.data.SettingsRepository
 import es.carlospb.modoguardia.data.guardDataStore
 import es.carlospb.modoguardia.domain.Deduplicator
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 class AppContainer(app: Application) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val settings = SettingsRepository(app.guardDataStore)
+    val seenChats = SeenChatsRepository(app.guardDataStore)
     private val database = HistoryDatabase.create(app)
     val history = HistoryRepository(database.historyDao())
     val diagnostics = DiagnosticsStore()

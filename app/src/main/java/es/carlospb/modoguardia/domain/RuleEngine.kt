@@ -12,7 +12,7 @@ object RuleEngine {
 
     /** Más específica primero: así la alarma muestra la regla más informativa. */
     private fun specificity(type: RuleType): Int = when (type) {
-        RuleType.WHATSAPP_GROUP -> 0
+        RuleType.WHATSAPP_GROUP, RuleType.WHATSAPP_CHAT -> 0
         RuleType.KEYWORDS -> 1
         RuleType.APP -> 2
         RuleType.WHATSAPP_ANY -> 3
@@ -22,6 +22,7 @@ object RuleEngine {
         val active = rules.filter { it.enabled && it.isValid() }.sortedBy { specificity(it.type) }
         val isWhatsApp = WhatsApp.isWhatsApp(event.packageName)
         val groupKeys by lazy { WhatsApp.groupCandidates(event).map(TextNormalizer::groupKey).toSet() }
+        val chatKeys by lazy { WhatsApp.chatCandidates(event).map(TextNormalizer::groupKey).toSet() }
         var groupUnresolved = false
 
         for (rule in active) {
@@ -36,6 +37,7 @@ object RuleEngine {
                     }
                     else -> TextNormalizer.groupKey(rule.groupName.orEmpty()) in groupKeys
                 }
+                RuleType.WHATSAPP_CHAT -> isWhatsApp && TextNormalizer.groupKey(rule.groupName.orEmpty()) in chatKeys
                 RuleType.KEYWORDS ->
                     (rule.packageName.isNullOrBlank() || rule.packageName == event.packageName) &&
                         keywordsMatch(rule, event.searchableText())

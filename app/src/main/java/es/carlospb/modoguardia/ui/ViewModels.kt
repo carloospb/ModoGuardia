@@ -13,6 +13,8 @@ import es.carlospb.modoguardia.data.HistoryEntity
 import es.carlospb.modoguardia.data.SoundSource
 import es.carlospb.modoguardia.data.VolumeMode
 import es.carlospb.modoguardia.domain.Rule
+import es.carlospb.modoguardia.domain.SeenChat
+import es.carlospb.modoguardia.domain.TextNormalizer
 import es.carlospb.modoguardia.domain.WhatsApp
 import es.carlospb.modoguardia.service.DiagnosticEntry
 import es.carlospb.modoguardia.service.GuardNotificationListener
@@ -34,6 +36,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 /** Guardia, estado del sistema, ajustes de alarma, prueba y diagnóstico. */
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -120,6 +123,21 @@ class RulesViewModel(app: Application) : AndroidViewModel(app) {
     val rules: StateFlow<List<Rule>> = c.settings.settings
         .map { it.rules }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Chats de WhatsApp vistos en notificaciones, el más reciente primero. */
+    val seenChats: StateFlow<List<SeenChat>> = c.seenChats.chats
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun clearSeenChats() = viewModelScope.launch { c.seenChats.clear() }
+
+    /** Una regla por chat elegido; los que ya tienen regla del mismo tipo y nombre no se duplican. */
+    fun addChatRules(chats: List<SeenChat>) = viewModelScope.launch {
+        c.settings.update { s ->
+            val fresh = chats.filterNot { chat -> s.rules.any { it.watches(chat) } }
+                .map { Rule(id = UUID.randomUUID().toString(), type = it.ruleType, groupName = it.name) }
+            s.copy(rules = s.rules + fresh)
+        }
+    }
 
     private val _apps = MutableStateFlow<List<InstalledApp>?>(null)
     val apps: StateFlow<List<InstalledApp>?> = _apps.asStateFlow()
@@ -262,3 +280,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         if (awaitingPermission && s is UpdateUi.Downloaded && Updater.canInstall(getApplication())) install(s)
     }
 }
+
+/** Esta regla ya vigila ese chat (mismo tipo y mismo nombre normalizado). */
+fun Rule.watches(chat: SeenChat): Boolean =
+    type == chat.ruleType && TextNormalizer.groupKey(groupName.orEmpty()) == TextNormalizer.groupKey(chat.name)
