@@ -16,6 +16,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,7 +31,8 @@ import es.carlospb.modoguardia.data.VolumeMode
 import es.carlospb.modoguardia.ui.theme.GuardColors
 
 @Composable
-fun SettingsScreen(settings: GuardSettings, vm: MainViewModel, onRerunOnboarding: () -> Unit) {
+fun SettingsScreen(settings: GuardSettings, vm: MainViewModel, updateVm: UpdateViewModel, onRerunOnboarding: () -> Unit) {
+    val update by updateVm.state.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()
@@ -58,12 +60,15 @@ fun SettingsScreen(settings: GuardSettings, vm: MainViewModel, onRerunOnboarding
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "La app no tiene permiso de Internet: nada sale del teléfono. No guarda mensajes; el historial guarda solo " +
-                    "lo imprescindible y puedes borrarlo. El diagnóstico vive solo en memoria. No hay analítica.",
+                "Ningún dato tuyo sale del teléfono. Internet solo se usa para buscar actualizaciones en carlospb.es. " +
+                    "No guarda mensajes; el historial guarda solo lo imprescindible y puedes borrarlo. " +
+                    "El diagnóstico vive solo en memoria. No hay analítica.",
                 style = MaterialTheme.typography.bodySmall,
                 color = GuardColors.TextDim,
             )
         }
+
+        UpdateSection(update, onCheck = { updateVm.check(manual = true) }, onUpdate = updateVm::downloadAndInstall)
 
         SectionTitle("Asistente")
         OutlinedButton(onClick = onRerunOnboarding, modifier = Modifier.fillMaxWidth()) { Text("Repetir configuración guiada") }

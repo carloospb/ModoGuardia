@@ -1,9 +1,11 @@
 package es.carlospb.modoguardia.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -62,5 +64,9 @@ val SectionLabel = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, let
 
 @Composable
 fun ModoGuardiaTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    MaterialTheme(colorScheme = scheme, typography = typography) {
+        // Fuera de un Surface o Scaffold (asistente inicial, carga) Compose pinta el texto en negro
+        // por defecto: sobre este fondo no se veia nada. El color base sale del tema para todo.
+        CompositionLocalProvider(LocalContentColor provides scheme.onBackground, content = content)
+    }
 }

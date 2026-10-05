@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solo se comparte la carpeta donde cae la actualizacion descargada: el instalador del sistema
+    es otro proceso y necesita un content:// con permiso de lectura acotado a esto.
+-->
+<paths>
+    <cache-path name="actualizaciones" path="actualizaciones/" />
+</paths>

@@ -72,6 +72,9 @@ private enum class Tab(val route: String, val label: String, val icon: ImageVect
 private fun Root() {
     val vm: MainViewModel = viewModel()
     val rulesVm: RulesViewModel = viewModel()
+    val updateVm: UpdateViewModel = viewModel()
+    val update by updateVm.state.collectAsStateWithLifecycle()
+    val updatePrompt by updateVm.prompt.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     val alarm by vm.alarm.collectAsStateWithLifecycle()
@@ -80,7 +83,15 @@ private fun Root() {
     val onFix = rememberFixHandler(vm)
     val snackbar = remember { SnackbarHostState() }
 
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.refreshStatus() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        vm.refreshStatus()
+        updateVm.onResume()
+    }
+
+    // Nunca encima de una alarma: la alerta tiene prioridad sobre cualquier actualización.
+    if (updatePrompt && alarm == null) {
+        UpdateDialog(update, onUpdate = updateVm::downloadAndInstall, onDismiss = updateVm::dismiss)
+    }
 
     // Con la app abierta, la alerta se abre directamente (sin depender del full-screen intent).
     LaunchedEffect(alarm != null) {
@@ -152,7 +163,7 @@ private fun Root() {
             }
             composable(Tab.STATUS.route) { StatusScreen(s, status, vm, onFix) }
             composable(Tab.HISTORY.route) { HistoryScreen(viewModel()) }
-            composable(Tab.SETTINGS.route) { SettingsScreen(s, vm) { vm.setOnboardingDone(false) } }
+            composable(Tab.SETTINGS.route) { SettingsScreen(s, vm, updateVm) { vm.setOnboardingDone(false) } }
         }
     }
 }

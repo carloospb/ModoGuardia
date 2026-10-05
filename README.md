@@ -24,7 +24,9 @@ para hasta que pulsas **DETENER ALARMA**.
 * **Diagnóstico de notificaciones** (solo en memoria) para ver cómo llegan los avisos de WhatsApp.
 * **Historial** local, con borrado.
 * **Asistente inicial** de 7 pasos.
-* **Sin permiso de Internet.** Nada sale del teléfono.
+* **Actualizador automático**: al abrir la app comprueba carlospb.es y, si hay versión nueva, la
+  ofrece, la descarga y abre el instalador (Android siempre pide confirmarlo).
+* **Ningún dato sale del teléfono.** Internet solo se usa para el actualizador; sin analítica.
 
 ## Compilar
 

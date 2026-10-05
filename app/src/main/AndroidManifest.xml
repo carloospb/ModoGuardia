@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     MODO GUARDIA — manifiesto.
-    Solo los permisos imprescindibles. NO hay permiso INTERNET: nada sale del dispositivo.
+    Solo los permisos imprescindibles. INTERNET solo para el actualizador (carlospb.es): ningun
+    dato del usuario sale del dispositivo y la alarma no depende de la red.
     Detalle y motivo de cada permiso en docs/PERMISOS.md.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -35,6 +36,14 @@
          (RINGING) o se ha contestado (OFFHOOK). NO da acceso al numero (eso exigiria
          READ_CALL_LOG, que no se pide). Se solicita en tiempo de ejecucion. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- Actualizador: leer el manifiesto de version de carlospb.es y descargar la APK nueva.
+         Solo se usa con la app abierta; nunca se envia nada del usuario. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Actualizador: entregar la APK descargada al instalador del sistema. El usuario lo
+         concede a mano la primera vez y confirma cada instalacion. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature
         android:name="android.hardware.telephony"
@@ -122,6 +131,17 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- Comparte con el instalador solo la APK descargada por el actualizador. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
 
         <!-- Solo recibe algo si el usuario concedio READ_PHONE_STATE. -->
         <receiver

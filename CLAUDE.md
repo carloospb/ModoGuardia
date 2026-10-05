@@ -9,7 +9,7 @@ Autor y propietario: **CarlosPB**. Esta identificación es permanente: no elimin
 |---|---|
 | Autor | CarlosPB |
 | Git (local del repo) | `user.name = CarlossPB`, `user.email = cpmbps4@gmail.com` |
-| Remoto | `https://CarlossPB@github.com/CarlossPB/ModoGuardia.git` (rama `main`) |
+| Remoto | `https://carloospb@github.com/carloospb/ModoGuardia.git` (rama `main`) |
 | Credenciales git | Git Credential Manager con `usehttppath` (igual que KeyFix, NowOrNever y carlospb.es) |
 | Vercel | Proyecto `carlospb-es` (`prj_gNoUmbfFRjpdrAsoJKKhD6KcxoCE`), team `team_qYTM2z7J5HwTQ2UNVbqTLPjk`, vinculado en `../docker-carlospb.es/.vercel` |
 | Web / descarga | `https://www.carlospb.es/ModoGuardia.apk` (cuando se publique) |
@@ -22,7 +22,7 @@ Reglas de identidad:
 * **No** usar `gh` para crear repos ni PRs: la sesión de `gh` es de `instalacionesc10`.
 * **No** usar el conector MCP de Vercel de Claude: está autenticado en otra cuenta
   (`aragoneses6000-del's projects`), no en la de CarlosPB.
-* Publicar en Vercel se hace desde `../docker-carlospb.es` (repo `CarlossPB/carlospb.es`), igual
+* Publicar en Vercel se hace desde `../docker-carlospb.es` (repo `carloospb/carlospb.es`), igual
   que NowOrNever y BT-LINKER: copiar la APK a `carlospb.es/public/`, añadir
   `modoguardia-version.json` y las cabeceras en `vercel.json`, commit y push. **Siempre pedir
   confirmación antes de publicar o hacer push.**
@@ -42,7 +42,9 @@ Prioridad: **FIABILIDAD > SIMPLICIDAD > DISEÑO**.
 2. Ninguna funcionalidad falsa: cada botón y cada estado visible tiene implementación real y
    comprueba el estado real del sistema.
 3. Si Android limita algo, se dice en la interfaz (ver `docs/LIMITACIONES.md`), no se disimula.
-4. Sin permiso `INTERNET`: todo es local. No añadir analítica ni red.
+4. `INTERNET` solo para el actualizador (`update/Updater.kt`): leer `modoguardia-version.json` y
+   descargar la APK de carlospb.es. Ningún dato del usuario sale del teléfono, la alarma no depende
+   de la red y no se añade analítica ni ninguna otra conexión.
 5. La lógica vive en `domain/` (pura, con pruebas JVM) y en servicios; nunca en Composables.
 6. Cualquier cambio en la cadena de alarma se valida con `./gradlew testDebugUnitTest
    assembleDebug` y con la prueba manual de `docs/PRUEBA-MANUAL.md`.

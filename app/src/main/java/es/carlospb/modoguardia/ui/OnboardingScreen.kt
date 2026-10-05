@@ -75,7 +75,7 @@ fun OnboardingScreen(
                             "que cumpla tus reglas o una llamada hace sonar una alarma potente que no para hasta " +
                             "que pulses DETENER.",
                     )
-                    Body("Modo Guardia analiza las notificaciones localmente en tu dispositivo únicamente para comprobar si cumplen las reglas configuradas. La app no tiene acceso a Internet.")
+                    Body("Modo Guardia analiza las notificaciones localmente en tu dispositivo únicamente para comprobar si cumplen las reglas configuradas. Ningún dato tuyo sale del teléfono: Internet solo se usa para buscar actualizaciones.")
                     Body("En los siguientes pasos se configuran los permisos. Cada estado que verás es real: se comprueba en el teléfono.")
                 }
                 2 -> {

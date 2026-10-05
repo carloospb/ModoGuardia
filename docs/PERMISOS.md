@@ -12,9 +12,11 @@
 | `VIBRATE` | Vibración. | Normal |
 | `RECEIVE_BOOT_COMPLETED` | Reanudar la guardia tras reiniciar o actualizar. | Normal |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Pedir la exclusión de Doze con el diálogo del sistema. Política de Play: uso aceptable cuando la función principal se rompe con Doze; hay que justificarlo al publicar. | Normal |
+| `INTERNET` | Solo el actualizador: leer `https://www.carlospb.es/modoguardia-version.json` al abrir la app y descargar la APK si el usuario acepta. No se envía ningún dato del usuario; la alarma no depende de la red. | Normal |
+| `REQUEST_INSTALL_PACKAGES` | Entregar la APK descargada al instalador del sistema. El usuario concede «Instalar apps desconocidas» a mano la primera vez y confirma cada instalación. | Especial |
 | `READ_PHONE_STATE` | Solo si se activa «Despertar con llamadas»: estado RINGING / OFFHOOK. No da el número. | En ejecución |
 
-**No se piden**: `INTERNET`, `QUERY_ALL_PACKAGES` (se usa `<queries>` del lanzador),
+**No se piden**: `QUERY_ALL_PACKAGES` (se usa `<queries>` del lanzador),
 `READ_CALL_LOG`, `ANSWER_PHONE_CALLS`, `ACCESS_NOTIFICATION_POLICY`, `SCHEDULE_EXACT_ALARM`,
 `SYSTEM_ALERT_WINDOW` ni servicios de accesibilidad.
 
