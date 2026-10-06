@@ -52,7 +52,8 @@ object SystemSettings {
             FixAction.UNUSED_APP_RESTRICTIONS -> buildList {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) add(Intent(Intent.ACTION_AUTO_REVOKE_PERMISSIONS, packageUri))
             }
-            FixAction.APP_DETAILS, FixAction.PHONE_PERMISSION, FixAction.RESTART_GUARD_SERVICE -> emptyList()
+            FixAction.APP_DETAILS, FixAction.PHONE_PERMISSION, FixAction.CALL_LOG_PERMISSION,
+            FixAction.RESTART_GUARD_SERVICE -> emptyList()
         } + Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
 
         for (intent in candidates) {

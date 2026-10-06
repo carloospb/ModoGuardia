@@ -11,6 +11,7 @@ import android.media.AudioAttributes
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import es.carlospb.modoguardia.R
+import es.carlospb.modoguardia.domain.AlarmKind
 import es.carlospb.modoguardia.domain.AlarmRequest
 import es.carlospb.modoguardia.ui.MainActivity
 import java.text.DateFormat
@@ -109,14 +110,22 @@ object GuardNotifications {
             .setContentIntent(openAppIntent(context))
             .build()
 
+    /** «LLAMADA DE GUARDIA · Carlos», «ALERTA DE GUARDIA · WhatsApp», «PRUEBA DE ALARMA». */
+    fun alarmTitle(r: AlarmRequest): String = when (r.kind) {
+        AlarmKind.PHONE_CALL, AlarmKind.APP_CALL -> "LLAMADA DE GUARDIA" + (r.conversation?.let { " · $it" } ?: "")
+        AlarmKind.TEST -> "PRUEBA DE ALARMA"
+        AlarmKind.NOTIFICATION -> "ALERTA DE GUARDIA · ${r.sourceApp}"
+    }
+
     /** La notificación del servicio de alarma: full-screen intent + botón DETENER. */
     fun alarm(context: Context, r: AlarmRequest): Notification {
         val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(r.timestamp))
+        val who = r.conversation ?: r.ruleLabel
         return NotificationCompat.Builder(context, CHANNEL_ALARM)
             .setSmallIcon(R.drawable.ic_stat_alarm)
-            .setContentTitle("🚨 ALERTA DE GUARDIA · ${r.sourceApp}")
-            .setContentText("${r.ruleLabel} · $time")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${r.ruleLabel} · $time\n${r.message}"))
+            .setContentTitle(alarmTitle(r))
+            .setContentText("$who · $time")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$who · $time\n${r.message}"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -146,9 +155,9 @@ object GuardNotifications {
     fun fallback(context: Context, r: AlarmRequest): Notification {
         val n = NotificationCompat.Builder(context, CHANNEL_ALARM_FALLBACK)
             .setSmallIcon(R.drawable.ic_stat_alarm)
-            .setContentTitle("🚨 ALERTA DE GUARDIA · ${r.sourceApp}")
-            .setContentText(r.ruleLabel)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("${r.ruleLabel}\n${r.message}"))
+            .setContentTitle(alarmTitle(r))
+            .setContentText(r.conversation ?: r.ruleLabel)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("${r.conversation ?: r.ruleLabel}\n${r.message}"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

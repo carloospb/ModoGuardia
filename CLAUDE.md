@@ -56,6 +56,11 @@ Kotlin 2.0.21 · AGP 8.7.3 · Gradle 8.9 · JDK 17 · compileSdk/targetSdk 35 ·
 
 SDK local: `C:/Users/PC/android-sdk` (en `local.properties`, no versionado).
 
+Pruebas: JUnit en la JVM para `domain/` y la persistencia, y Robolectric para la interfaz
+(`UiTourTest` abre todas las pantallas con la app real). Con la variable de entorno
+`MG_SCREENSHOTS_DIR=<carpeta>` ese recorrido guarda una captura PNG de cada pantalla. Este equipo no
+tiene virtualización activada en la BIOS: no hay emulador.
+
 ## Arquitectura
 
 Ver `docs/ARQUITECTURA.md`.

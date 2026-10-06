@@ -46,6 +46,7 @@ internal object AlarmExtras {
     private const val RULE = "rule"
     private const val MESSAGE = "message"
     private const val TIME = "time"
+    private const val CONVERSATION = "conversation"
 
     fun put(intent: Intent, r: AlarmRequest): Intent = intent
         .putExtra(KIND, r.kind.name)
@@ -54,6 +55,7 @@ internal object AlarmExtras {
         .putExtra(RULE, r.ruleLabel)
         .putExtra(MESSAGE, r.message)
         .putExtra(TIME, r.timestamp)
+        .putExtra(CONVERSATION, r.conversation)
 
     fun read(intent: Intent?): AlarmRequest? {
         if (intent == null || !intent.hasExtra(SOURCE)) return null
@@ -64,6 +66,7 @@ internal object AlarmExtras {
             ruleLabel = intent.getStringExtra(RULE).orEmpty(),
             message = intent.getStringExtra(MESSAGE).orEmpty(),
             timestamp = intent.getLongExtra(TIME, System.currentTimeMillis()),
+            conversation = intent.getStringExtra(CONVERSATION),
         )
     }
 }

@@ -1,7 +1,10 @@
 package es.carlospb.modoguardia.service
 
+import es.carlospb.modoguardia.domain.CallerId
+import es.carlospb.modoguardia.domain.ChatKind
+import es.carlospb.modoguardia.domain.Conversations
+import es.carlospb.modoguardia.domain.DetectedConversation
 import es.carlospb.modoguardia.domain.NotificationEvent
-import es.carlospb.modoguardia.domain.WhatsApp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +15,11 @@ data class DiagnosticEntry(
     val skipReason: String?,
     val groupCandidates: List<String>,
     val receivedAt: Long,
+    val kind: ChatKind = ChatKind.UNKNOWN,
+    /** Conversación que Modo Guardia reconoce en el aviso (la que aparecería en la lista). */
+    val conversation: DetectedConversation? = null,
+    /** En avisos de llamada: quién llama según el aviso. */
+    val caller: CallerId? = null,
 )
 
 /**
@@ -39,8 +47,16 @@ class DiagnosticsStore {
     fun record(parsed: ParsedNotification, now: Long = System.currentTimeMillis()) {
         _lastSeen.update { it + (parsed.event.packageName to now) }
         if (!_enabled.value) return
-        val candidates = if (WhatsApp.isWhatsApp(parsed.event.packageName)) WhatsApp.groupCandidates(parsed.event) else emptyList()
-        val entry = DiagnosticEntry(parsed.event, parsed.skipReason, candidates, now)
+        val e = parsed.event
+        val entry = DiagnosticEntry(
+            event = e,
+            skipReason = parsed.skipReason,
+            groupCandidates = Conversations.groupCandidates(e),
+            receivedAt = now,
+            kind = Conversations.kind(e),
+            conversation = Conversations.identify(e),
+            caller = if (e.isIncomingCall) CallerId.from(e) else null,
+        )
         _recent.update { (listOf(entry) + it).take(MAX) }
     }
 

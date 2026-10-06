@@ -8,7 +8,7 @@ import es.carlospb.modoguardia.domain.RuleEngine
 import es.carlospb.modoguardia.domain.RuleType
 import es.carlospb.modoguardia.domain.SeenChat
 import es.carlospb.modoguardia.domain.SeenChats
-import es.carlospb.modoguardia.domain.WhatsApp
+import es.carlospb.modoguardia.domain.Conversations
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -21,7 +21,7 @@ class SeenChatsTest {
     private fun individual(name: String, text: String = "hola", flag: Boolean? = false, title: String = name) =
         waGroupMessage(name, name, text, ts = 1, titleStyle = title, conversationTitle = null).copy(isGroupConversation = flag)
 
-    private fun chatRule(name: String) = Rule(id = "c-$name", type = RuleType.WHATSAPP_CHAT, groupName = name)
+    private fun chatRule(name: String) = Rule(id = "c-$name", type = RuleType.PERSON, name = name)
 
     private fun matches(e: es.carlospb.modoguardia.domain.NotificationEvent, rule: Rule) =
         RuleEngine.evaluate(e, listOf(rule)) is Evaluation.Match
@@ -48,18 +48,18 @@ class SeenChatsTest {
     fun `a rule created from a seen chat matches that chat`() {
         val group = waGroupMessage("Guardias ‎Soporte 🚨", "Luis", "caído", ts = 1, conversationTitle = "Guardias ‎Soporte 🚨 (2 mensajes)")
         val g = SeenChats.chatOf(group, now = 1)!!
-        assertTrue(matches(group, Rule(id = "g", type = g.ruleType, groupName = g.name)))
+        assertTrue(matches(group, Rule(id = "g", type = g.ruleType, name = g.name)))
 
         val ana = individual("Ana López", title = "Ana López (2 mensajes)")
         val c = SeenChats.chatOf(ana, now = 1)!!
-        assertEquals(RuleType.WHATSAPP_CHAT, c.ruleType)
-        assertTrue(matches(ana, Rule(id = "c", type = c.ruleType, groupName = c.name)))
+        assertEquals(RuleType.PERSON, c.ruleType)
+        assertTrue(matches(ana, Rule(id = "c", type = c.ruleType, name = c.name)))
     }
 
     @Test
     fun `individual chat rule ignores the same person writing in a group`() {
         val inGroup = waGroupMessage("GUARDIAS", "Ana López", "hola", ts = 1)
-        assertEquals(ChatKind.GROUP, WhatsApp.chatKind(inGroup))
+        assertEquals(ChatKind.GROUP, Conversations.kind(inGroup))
         assertFalse(matches(inGroup, chatRule("Ana López")))
         assertFalse(matches(individual("Pedro"), chatRule("Ana López")))
     }

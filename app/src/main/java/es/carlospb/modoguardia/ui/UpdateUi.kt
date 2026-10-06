@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,6 +26,8 @@ fun UpdateDialog(state: UpdateUi, onUpdate: () -> Unit, onDismiss: () -> Unit) {
     when (state) {
         is UpdateUi.Available -> AlertDialog(
             onDismissRequest = onDismiss,
+            containerColor = GuardColors.SurfaceHigh,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("Nueva versión ${state.version.versionName}") },
             text = {
                 Column {
@@ -45,6 +46,8 @@ fun UpdateDialog(state: UpdateUi, onUpdate: () -> Unit, onDismiss: () -> Unit) {
 
         is UpdateUi.Downloading -> AlertDialog(
             onDismissRequest = onDismiss,
+            containerColor = GuardColors.SurfaceHigh,
+            shape = MaterialTheme.shapes.extraLarge,
             title = { Text("Descargando ${state.version.versionName}") },
             text = {
                 Column {
@@ -64,6 +67,8 @@ fun UpdateDialog(state: UpdateUi, onUpdate: () -> Unit, onDismiss: () -> Unit) {
             val allowed = Updater.canInstall(context)
             AlertDialog(
                 onDismissRequest = onDismiss,
+                containerColor = GuardColors.SurfaceHigh,
+                shape = MaterialTheme.shapes.extraLarge,
                 title = { Text("Lista para instalar") },
                 text = {
                     Text(
@@ -83,6 +88,8 @@ fun UpdateDialog(state: UpdateUi, onUpdate: () -> Unit, onDismiss: () -> Unit) {
         is UpdateUi.Failed -> if (state.version != null) {
             AlertDialog(
                 onDismissRequest = onDismiss,
+                containerColor = GuardColors.SurfaceHigh,
+                shape = MaterialTheme.shapes.extraLarge,
                 title = { Text("No se pudo actualizar") },
                 text = { Text(state.reason) },
                 confirmButton = { TextButton(onClick = onUpdate) { Text("Reintentar") } },
@@ -99,7 +106,7 @@ fun UpdateDialog(state: UpdateUi, onUpdate: () -> Unit, onDismiss: () -> Unit) {
 fun UpdateSection(state: UpdateUi, onCheck: () -> Unit, onUpdate: () -> Unit) {
     SectionTitle("Actualizaciones")
     GuardCard {
-        Text("Versión instalada: ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyMedium)
+        Text("Modo Guardia ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleSmall)
         val line = when (state) {
             UpdateUi.Idle -> "Se comprueba sola cada vez que abres la app."
             UpdateUi.Checking -> "Comprobando…"
@@ -109,19 +116,15 @@ fun UpdateSection(state: UpdateUi, onCheck: () -> Unit, onUpdate: () -> Unit) {
             is UpdateUi.Downloaded -> "${state.version.versionName} descargada, pendiente de instalar."
             is UpdateUi.Failed -> state.reason
         }
-        Text(line, style = MaterialTheme.typography.bodySmall, color = GuardColors.TextDim)
-        Spacer(Modifier.height(8.dp))
+        Text(line, style = MaterialTheme.typography.bodySmall, color = if (state is UpdateUi.Available) GuardColors.Active else GuardColors.TextDim)
+        Spacer(Modifier.height(12.dp))
         val pending = state is UpdateUi.Available || state is UpdateUi.Downloaded || (state is UpdateUi.Failed && state.version != null)
-        OutlinedButton(
-            onClick = if (pending) onUpdate else onCheck,
-            enabled = state !is UpdateUi.Checking && state !is UpdateUi.Downloading,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (pending) "Actualizar ahora" else "Buscar actualizaciones") }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Solo consulta carlospb.es y descarga la APK si aceptas. Android siempre pide confirmar la instalación.",
-            style = MaterialTheme.typography.bodySmall,
-            color = GuardColors.TextDim,
-        )
+        val busy = state is UpdateUi.Checking || state is UpdateUi.Downloading
+        if (pending) {
+            PrimaryButton("Actualizar ahora", onClick = onUpdate, enabled = !busy, modifier = Modifier.fillMaxWidth())
+        } else {
+            SecondaryButton("Buscar actualizaciones", onClick = onCheck, enabled = !busy, modifier = Modifier.fillMaxWidth())
+        }
+        Hint("Solo consulta carlospb.es y descarga la APK si aceptas. Android siempre pide confirmar la instalación.")
     }
 }

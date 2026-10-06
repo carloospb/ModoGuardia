@@ -35,6 +35,14 @@ data class NotificationEvent(
     val postTime: Long,
     /** Notification.when. */
     val whenTime: Long = postTime,
+    /** Notification.getShortcutId(): la conversación en las apps de chat de Android 11+. Puede faltar. */
+    val shortcutId: String? = null,
+    /** Canal de la notificación (pista de grupo/individual en WhatsApp). */
+    val channelId: String? = null,
+    /** Personas del aviso (EXTRA_PEOPLE_LIST / EXTRA_CALL_PERSON): solo el nombre. */
+    val personNames: List<String> = emptyList(),
+    /** Números «tel:» de esas personas, si el aviso los trae (llamadas). */
+    val personNumbers: List<String> = emptyList(),
 ) {
     val lastMessage: MessageLine?
         get() = messages.maxByOrNull { it.timestamp }

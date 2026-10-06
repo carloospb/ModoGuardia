@@ -17,8 +17,8 @@ android {
         // Android 10. Por debajo no hay setShowWhenLocked/turnScreenOn ni canales maduros.
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         buildConfigField("String", "AUTHOR", "\"CarlosPB\"")
     }
 
@@ -56,6 +56,8 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric necesita los recursos de la app (tema, fuente, cadenas).
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -85,4 +87,10 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.org.json)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.junit)
 }

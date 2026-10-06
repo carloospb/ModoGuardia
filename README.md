@@ -10,21 +10,29 @@ para hasta que pulsas **DETENER ALARMA**.
 
 ## Qué hace
 
-* **Reglas** («¿Qué debe despertarme?»): cualquier aviso de una app · cualquier WhatsApp · un
-  **grupo o chat individual de WhatsApp** concreto, elegido de una lista con aspecto de WhatsApp
-  (los chats de los que ya llegó algún aviso) o escrito a mano · **palabras clave** (cualquiera / todas, con o sin mayúsculas y
-  tildes), en una app o en todas.
-* **Llamadas**: cualquier llamada telefónica entrante y, aparte, llamadas de apps (WhatsApp,
-  Teams…). La llamada funciona con normalidad; la alarma se para al contestar.
+* **Centro de control**: un gran escudo activa o desactiva la guardia (animación, vibración
+  táctil, estado inequívoco) y debajo se ve qué se vigila: apps, chats, contactos de llamada y el
+  estado real del sistema.
+* **Qué te despierta**, por aplicación (WhatsApp, Telegram, Signal, Mensajes, correo,
+  monitorización…): **todos sus avisos** o **solo los chats elegidos**, separados en **personas** y
+  **grupos**, más **palabras clave** (cualquiera / todas, con o sin mayúsculas y tildes).
+* **Conversaciones detectadas**: ninguna app de chat deja leer su lista de conversaciones, así que
+  cada chat que manda un aviso aparece en un selector (búsqueda, Todos / Personas / Grupos,
+  selección múltiple). Se guarda solo el nombre, nunca los mensajes. También se pueden escribir.
+* **Llamadas**: todas, o solo **contactos elegidos** (selector oficial de Android, sin leer la
+  agenda) y **números concretos**. Si no se puede saber quién llama, decide el usuario (por defecto
+  despierta). Aparte, llamadas de apps (WhatsApp, Teams…). La llamada funciona con normalidad; la
+  alarma se para al contestar.
 * **Alarma**: canal de ALARMA de Android (suena en silencio/vibración), volumen máximo,
   configurable o actual (restaurado al terminar), vibración en bucle, pantalla de alerta sobre el
-  bloqueo con full-screen intent. Sin límite de tiempo.
-* **Estado del sistema** real: acceso a notificaciones, notificaciones propias, pantalla completa,
-  batería, «No molestar», llamadas, servicio de guardia, fabricante.
-* **Probar alarma** (3 s, o 15 s para bloquear el teléfono) por el mismo camino que una incidencia.
-* **Diagnóstico de notificaciones** (solo en memoria) para ver cómo llegan los avisos de WhatsApp.
-* **Historial** local, con borrado.
-* **Asistente inicial** de 7 pasos.
+  bloqueo («ALERTA DE GUARDIA» / «LLAMADA DE GUARDIA») con full-screen intent. Sin límite de tiempo.
+* **Estado del sistema** real, con arreglo directo de cada punto: acceso a notificaciones,
+  notificaciones propias, pantalla completa, batería, «No molestar», llamadas, servicio, fabricante.
+* **Probar alarma** (al momento, o en 15 s para bloquear el teléfono), marcada como prueba.
+* **Historial** local por días, sin el texto de los mensajes, con borrado.
+* **Configuración guiada** en 6 pasos: acceso, qué te despierta, llamadas, alarma y activar.
+* **Diagnóstico de notificaciones** (solo en memoria) para ver qué trae cada aviso y qué
+  conversación o llamada reconoce Modo Guardia.
 * **Actualizador automático**: al abrir la app comprueba carlospb.es y, si hay versión nueva, la
   ofrece, la descarga y abre el instalador (Android siempre pide confirmarlo).
 * **Ningún dato sale del teléfono.** Internet solo se usa para el actualizador; sin analítica.

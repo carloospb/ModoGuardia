@@ -1,12 +1,15 @@
 package es.carlospb.modoguardia.service
 
 import android.app.Notification
+import android.app.Person
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.service.notification.StatusBarNotification
 import android.telecom.TelecomManager
 import androidx.core.app.NotificationCompat
+import androidx.core.os.BundleCompat
 import es.carlospb.modoguardia.domain.MessageLine
 import es.carlospb.modoguardia.domain.NotificationEvent
 import java.util.concurrent.ConcurrentHashMap
@@ -74,6 +77,15 @@ class NotificationParser(private val context: Context) {
             null
         }
 
+        // Personas del aviso: en las llamadas, quién llama (CallStyle, Android 12+); en los chats, los
+        // participantes. Solo nombre y, si es un número «tel:», el número.
+        val people = buildList {
+            BundleCompat.getParcelableArrayList(extras, Notification.EXTRA_PEOPLE_LIST, Person::class.java)?.let(::addAll)
+            BundleCompat.getParcelable(extras, EXTRA_CALL_PERSON, Person::class.java)?.let(::add)
+        }
+        @Suppress("DEPRECATION") // EXTRA_PEOPLE: forma antigua, aún usada por algunos marcadores.
+        val legacyPeople = extras.getStringArray(Notification.EXTRA_PEOPLE)?.toList().orEmpty()
+
         val isCall = n.category == Notification.CATEGORY_CALL
         // Notification.EXTRA_CALL_TYPE ("android.callType") existe desde Android 12; antes vale 0.
         val callType = extras.getInt(EXTRA_CALL_TYPE, 0)
@@ -97,6 +109,13 @@ class NotificationParser(private val context: Context) {
             isPhoneCall = phoneCall,
             postTime = sbn.postTime,
             whenTime = n.`when`,
+            shortcutId = n.shortcutId?.takeIf { it.isNotBlank() },
+            channelId = n.channelId,
+            personNames = people.mapNotNull { it.name?.toString()?.takeIf(String::isNotBlank) }.distinct(),
+            personNumbers = (people.mapNotNull { it.uri } + legacyPeople)
+                .filter { it.startsWith(TEL) }
+                .map { Uri.decode(it.removePrefix(TEL)) }
+                .distinct(),
         )
 
         val flags = n.flags
@@ -119,5 +138,9 @@ class NotificationParser(private val context: Context) {
     private companion object {
         const val EXTRA_CALL_TYPE = "android.callType"
         const val CALL_TYPE_INCOMING = 1
+
+        /** Notification.EXTRA_CALL_PERSON (Android 12). */
+        const val EXTRA_CALL_PERSON = "android.callPerson"
+        const val TEL = "tel:"
     }
 }

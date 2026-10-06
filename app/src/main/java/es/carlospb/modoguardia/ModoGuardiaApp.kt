@@ -1,7 +1,10 @@
 package es.carlospb.modoguardia
 
+import android.Manifest
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import es.carlospb.modoguardia.alarm.AlarmController
 import es.carlospb.modoguardia.alarm.AlarmState
 import es.carlospb.modoguardia.alarm.GuardNotifications
@@ -33,7 +36,11 @@ class AppContainer(app: Application) {
     val diagnostics = DiagnosticsStore()
     val alarmController = AlarmController(app, settings, history, appScope)
     val engine = GuardEngine(
-        snapshot = { settings.current().toSnapshot() },
+        snapshot = {
+            settings.current().toSnapshot().copy(
+                exactNumberAvailable = granted(app, Manifest.permission.READ_PHONE_STATE) && granted(app, Manifest.permission.READ_CALL_LOG),
+            )
+        },
         dedup = Deduplicator(),
         alarm = alarmController,
         history = history,
@@ -60,8 +67,13 @@ class ModoGuardiaApp : Application() {
         // Si el proceso arranca (p. ej. lo enlaza el lector de notificaciones) con la guardia activa
         // y sin su servicio, se reanuda.
         c.appScope.launch { c.guardController.ensureServiceRunning() }
+        // Privacidad: el historial de versiones anteriores guardaba el inicio de los mensajes.
+        c.appScope.launch { runCatching { c.history.stripLegacyMessageText() } }
     }
 }
+
+private fun granted(context: Context, permission: String) =
+    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
 val Context.container: AppContainer
     get() = (applicationContext as ModoGuardiaApp).container

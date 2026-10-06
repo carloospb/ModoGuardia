@@ -11,8 +11,10 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import es.carlospb.modoguardia.domain.CallMode
 import es.carlospb.modoguardia.domain.GuardSnapshot
 import es.carlospb.modoguardia.domain.Rule
+import es.carlospb.modoguardia.domain.WatchSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -36,11 +38,20 @@ data class GuardSettings(
     val vibrate: Boolean = true,
     val soundSource: SoundSource = SoundSource.SIREN,
     val diagnosticsEnabled: Boolean = false,
+    /** Qué llamadas telefónicas despiertan: todas o solo los contactos y números elegidos. */
+    val callMode: CallMode = CallMode.ALL,
+    /** Con [CallMode.SELECTED], si no se puede saber quién llama: despertar (más seguro) o no. */
+    val wakeOnUnidentifiedCalls: Boolean = true,
+    /** Recordar las conversaciones que mandan avisos para poder elegirlas (solo el nombre). */
+    val learnConversations: Boolean = true,
 ) {
     val enabledRules: List<Rule> get() = rules.filter { it.enabled && it.isValid() }
 
-    /** Reglas + interruptores de llamadas: lo que puede despertar al usuario. */
-    val activeTriggerCount: Int get() = enabledRules.size + (if (wakeOnPhoneCalls) 1 else 0) + (if (wakeOnAppCalls) 1 else 0)
+    /** Resumen de lo vigilado: apps, conversaciones y llamadas. */
+    val watch: WatchSummary get() = WatchSummary.of(rules, wakeOnPhoneCalls, callMode, wakeOnAppCalls)
+
+    /** Reglas + llamadas: lo que puede despertar al usuario. 0 = nada le despertará. */
+    val activeTriggerCount: Int get() = watch.triggerCount
 
     fun toSnapshot() = GuardSnapshot(
         active = guardActive,
@@ -48,6 +59,8 @@ data class GuardSettings(
         rules = rules,
         wakeOnPhoneCalls = wakeOnPhoneCalls,
         wakeOnAppCalls = wakeOnAppCalls,
+        callMode = callMode,
+        wakeOnUnidentifiedCalls = wakeOnUnidentifiedCalls,
     )
 }
 
@@ -67,6 +80,9 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val VIBRATE = booleanPreferencesKey("vibrate")
         val SOUND = stringPreferencesKey("sound_source")
         val DIAGNOSTICS = booleanPreferencesKey("diagnostics")
+        val CALL_MODE = stringPreferencesKey("call_mode")
+        val UNIDENTIFIED_CALLS = booleanPreferencesKey("wake_unidentified_calls")
+        val LEARN = booleanPreferencesKey("learn_conversations")
     }
 
     val settings: Flow<GuardSettings> = store.data
@@ -92,6 +108,9 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         vibrate = p[Keys.VIBRATE] ?: true,
         soundSource = enumOr(p[Keys.SOUND], SoundSource.SIREN),
         diagnosticsEnabled = p[Keys.DIAGNOSTICS] ?: false,
+        callMode = enumOr(p[Keys.CALL_MODE], CallMode.ALL),
+        wakeOnUnidentifiedCalls = p[Keys.UNIDENTIFIED_CALLS] ?: true,
+        learnConversations = p[Keys.LEARN] ?: true,
     )
 
     private fun write(p: MutablePreferences, s: GuardSettings) {
@@ -106,6 +125,9 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         p[Keys.VIBRATE] = s.vibrate
         p[Keys.SOUND] = s.soundSource.name
         p[Keys.DIAGNOSTICS] = s.diagnosticsEnabled
+        p[Keys.CALL_MODE] = s.callMode.name
+        p[Keys.UNIDENTIFIED_CALLS] = s.wakeOnUnidentifiedCalls
+        p[Keys.LEARN] = s.learnConversations
     }
 
     private inline fun <reified T : Enum<T>> enumOr(name: String?, default: T): T =

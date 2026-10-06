@@ -8,11 +8,14 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import es.carlospb.modoguardia.container
 import es.carlospb.modoguardia.domain.HistoryType
+import es.carlospb.modoguardia.domain.GuardEngine
 import es.carlospb.modoguardia.domain.NotificationEvent
+import es.carlospb.modoguardia.domain.Outcome
 import es.carlospb.modoguardia.domain.SeenChats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
@@ -71,9 +74,18 @@ class GuardNotificationListener : NotificationListenerService() {
         val c = container
         c.diagnostics.record(parsed)
         if (parsed.skipReason != null) return
-        // Para elegir chats de una lista al crear reglas. Solo el nombre, nunca el mensaje.
-        SeenChats.chatOf(parsed.event, System.currentTimeMillis())?.let { chat -> c.appScope.launch { c.seenChats.record(chat) } }
-        c.appScope.launch { c.engine.onNotification(parsed.event) }
+        // «Conversaciones detectadas», para elegirlas al crear reglas. Solo el nombre, nunca el mensaje,
+        // y solo si el usuario no lo ha desactivado en Ajustes → Privacidad.
+        SeenChats.chatOf(parsed.event, System.currentTimeMillis())?.let { chat ->
+            c.appScope.launch { if (c.settings.current().learnConversations) c.seenChats.record(chat) }
+        }
+        c.appScope.launch {
+            // Aviso de llamada sin identificar con el número exacto en camino: se espera a la señal.
+            if (c.engine.onNotification(parsed.event) == Outcome.AWAITING_CALLER) {
+                delay(GuardEngine.CALLER_TIMEOUT_MS)
+                c.engine.onCallerTimeout()
+            }
+        }
     }
 
     private fun snapshotActive(): List<NotificationEvent> = try {

@@ -42,6 +42,9 @@ class GuardService : Service() {
     private var monitor: Job? = null
     private var lastCriticalKey: String = ""
 
+    /** Último texto publicado en la notificación de estado: no se vuelve a publicar si no cambia. */
+    private var lastStatusText: String? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -93,14 +96,24 @@ class GuardService : Service() {
         val critical = status.items.filter { it.level == CheckLevel.ERROR }
         val warnings = status.items.filter { it.level == CheckLevel.WARNING }
         val since = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(settings.guardStartedAt))
-        val base = "Vigilando desde $since · ${settings.activeTriggerCount} reglas activas"
+        val watch = settings.watch
+        val base = "Protegiendo tu descanso desde las $since · " + when {
+            watch.conversationCount > 0 -> "${watch.appCount} apps · ${watch.conversationCount} chats"
+            else -> "${settings.activeTriggerCount} reglas activas"
+        }
         val text = when {
             critical.isNotEmpty() -> "$base\nCorrige: " + critical.joinToString(", ") { it.title }
             warnings.isNotEmpty() -> "$base\nRevisa: " + warnings.joinToString(", ") { it.title }
-            else -> "$base\nSistema preparado ✓"
+            else -> "$base\nSistema preparado"
         }
         val nm = getSystemService(NotificationManager::class.java)
-        nm.notify(GuardNotifications.ID_STATUS, GuardNotifications.status(this, text, warning = critical.isNotEmpty()))
+        // Solo si cambia o si el usuario la ha quitado (Android 14+ lo permite): republicar la misma
+        // notificación cada minuto es trabajo en balde.
+        val showing = runCatching { nm.activeNotifications.any { it.id == GuardNotifications.ID_STATUS } }.getOrDefault(false)
+        if (text != lastStatusText || !showing) {
+            nm.notify(GuardNotifications.ID_STATUS, GuardNotifications.status(this, text, warning = critical.isNotEmpty()))
+            lastStatusText = text
+        }
 
         val key = critical.joinToString("|") { it.id }
         if (key != lastCriticalKey) {

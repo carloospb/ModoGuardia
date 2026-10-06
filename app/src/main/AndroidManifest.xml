@@ -33,9 +33,14 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Solo si el usuario activa "Despertar con llamadas": saber que el telefono esta sonando
-         (RINGING) o se ha contestado (OFFHOOK). NO da acceso al numero (eso exigiria
-         READ_CALL_LOG, que no se pide). Se solicita en tiempo de ejecucion. -->
+         (RINGING), se ha contestado (OFFHOOK) o ha colgado (IDLE). Por si solo NO da el numero
+         (para eso hace falta el READ_CALL_LOG opcional de abajo). Se solicita en ejecucion. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- OPCIONAL, solo si el usuario añade números a mano en «Llamadas»: con este permiso Android
+         incluye el número en la señal de llamada entrante y Modo Guardia puede reconocer ese número
+         aunque el marcador muestre otro nombre. No se lee el historial de llamadas. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
     <!-- Actualizador: leer el manifiesto de version de carlospb.es y descargar la APK nueva.
          Solo se usa con la app abierta; nunca se envia nada del usuario. -->

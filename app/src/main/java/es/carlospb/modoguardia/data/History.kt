@@ -39,6 +39,16 @@ interface HistoryDao {
 
     @Query("DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC, id DESC LIMIT :keep)")
     suspend fun trim(keep: Int)
+
+    /**
+     * Las versiones 1.0 y 1.1 guardaban, en las alarmas, el inicio del mensaje en una segunda línea
+     * del detalle. Se borra esa línea: el historial solo guarda origen y conversación.
+     */
+    @Query(
+        "UPDATE history SET detail = substr(detail, 1, instr(detail, char(10)) - 1) " +
+            "WHERE type IN ('ALARM', 'MATCH_WHILE_RINGING') AND instr(detail, char(10)) > 0",
+    )
+    suspend fun stripMessageText()
 }
 
 @Database(entities = [HistoryEntity::class], version = 1, exportSchema = false)
@@ -62,6 +72,9 @@ class HistoryRepository(private val dao: HistoryDao) : HistoryLog {
     }
 
     suspend fun clear() = dao.clear()
+
+    /** Quita el texto de mensajes que guardaron versiones anteriores. Idempotente. */
+    suspend fun stripLegacyMessageText() = dao.stripMessageText()
 
     private companion object {
         const val MAX_ENTRIES = 1000

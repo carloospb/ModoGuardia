@@ -5,7 +5,7 @@ import es.carlospb.modoguardia.domain.NotificationEvent
 import es.carlospb.modoguardia.domain.Rule
 import es.carlospb.modoguardia.domain.RuleEngine
 import es.carlospb.modoguardia.domain.RuleType
-import es.carlospb.modoguardia.domain.WhatsApp
+import es.carlospb.modoguardia.domain.Conversations
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -103,7 +103,7 @@ class RuleEngineTest {
     @Test
     fun `whatsapp notification without any group data is reported as unresolved`() {
         val e = NotificationEvent(key = "k", packageName = WA, appName = "WhatsApp", title = null, text = "2 mensajes nuevos", postTime = 1)
-        assertTrue(WhatsApp.groupCandidates(e).isEmpty())
+        assertTrue(Conversations.groupCandidates(e).isEmpty())
         val result = RuleEngine.evaluate(e, listOf(groupRule("GUARDIAS SOPORTE")))
         assertEquals(Evaluation.NoMatch(groupUnresolved = true), result)
     }

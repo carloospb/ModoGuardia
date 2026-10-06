@@ -17,6 +17,7 @@ import es.carlospb.modoguardia.alarm.GuardNotifications
 import es.carlospb.modoguardia.data.GuardSettings
 import es.carlospb.modoguardia.data.SoundSource
 import es.carlospb.modoguardia.data.VolumeMode
+import es.carlospb.modoguardia.domain.CallMode
 import es.carlospb.modoguardia.service.GuardNotificationListener
 
 enum class CheckLevel { OK, WARNING, ERROR, INFO }
@@ -24,7 +25,7 @@ enum class CheckLevel { OK, WARNING, ERROR, INFO }
 enum class FixAction {
     NOTIFICATION_ACCESS, REBIND_LISTENER, POST_NOTIFICATIONS, APP_NOTIFICATION_SETTINGS,
     FULL_SCREEN_INTENT, BATTERY_OPTIMIZATION, APP_DETAILS, DND_SETTINGS, PHONE_PERMISSION,
-    SOUND_SETTINGS, RESTART_GUARD_SERVICE, UNUSED_APP_RESTRICTIONS,
+    SOUND_SETTINGS, RESTART_GUARD_SERVICE, UNUSED_APP_RESTRICTIONS, CALL_LOG_PERMISSION,
 }
 
 data class CheckItem(
@@ -41,6 +42,12 @@ data class SystemStatus(val items: List<CheckItem>) {
     val problems: List<CheckItem> get() = items.filter { it.level == CheckLevel.ERROR || it.level == CheckLevel.WARNING }
     val hasErrors: Boolean get() = items.any { it.level == CheckLevel.ERROR }
     val ready: Boolean get() = problems.isEmpty()
+
+    /** Ya se ha comprobado el sistema al menos una vez (antes no se puede decir que esté listo). */
+    val checked: Boolean get() = items.isNotEmpty()
+
+    /** Todo comprobado y sin problemas. Nunca es true mientras falte algo o no se haya comprobado. */
+    val operational: Boolean get() = checked && problems.isEmpty()
 
     companion object {
         val EMPTY = SystemStatus(emptyList())
@@ -261,6 +268,21 @@ class SystemStatusChecker(private val context: Context) {
                     FixAction.PHONE_PERMISSION, "Conceder permiso",
                 )
             }
+        }
+        val manualNumbers = s.callMode == CallMode.SELECTED && s.rules.any { it.enabled && it.isCall && !it.isContact && it.numbers.isNotEmpty() }
+        if (s.wakeOnPhoneCalls && manualNumbers &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Sin el número exacto, una llamada de esos números puede quedar «sin identificar»: si el
+            // usuario ha elegido no despertar en ese caso, podría perderse una llamada.
+            return CheckItem(
+                "calls", "Llamadas", if (s.wakeOnUnidentifiedCalls) CheckLevel.INFO else CheckLevel.WARNING,
+                "Números a mano sin identificación exacta",
+                "Los números añadidos a mano se reconocen si el marcador muestra el número. Si muestra un nombre " +
+                    "(por ejemplo, el de una empresa), la llamada queda «sin identificar». Con el permiso «Registro de " +
+                    "llamadas» Android da el número exacto.",
+                FixAction.CALL_LOG_PERMISSION, "Permitir identificar números",
+            )
         }
         if (s.wakeOnAppCalls && !appCallsOk) {
             return CheckItem(

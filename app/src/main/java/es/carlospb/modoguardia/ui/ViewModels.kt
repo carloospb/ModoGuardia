@@ -12,9 +12,10 @@ import es.carlospb.modoguardia.data.GuardSettings
 import es.carlospb.modoguardia.data.HistoryEntity
 import es.carlospb.modoguardia.data.SoundSource
 import es.carlospb.modoguardia.data.VolumeMode
+import es.carlospb.modoguardia.domain.CallMode
 import es.carlospb.modoguardia.domain.Rule
+import es.carlospb.modoguardia.domain.RuleEdits
 import es.carlospb.modoguardia.domain.SeenChat
-import es.carlospb.modoguardia.domain.TextNormalizer
 import es.carlospb.modoguardia.domain.WhatsApp
 import es.carlospb.modoguardia.service.DiagnosticEntry
 import es.carlospb.modoguardia.service.GuardNotificationListener
@@ -24,6 +25,7 @@ import es.carlospb.modoguardia.update.PublishedVersion
 import es.carlospb.modoguardia.update.UpdateCheck
 import es.carlospb.modoguardia.update.Updater
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,7 +40,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
-/** Guardia, estado del sistema, ajustes de alarma, prueba y diagnóstico. */
+private fun newId() = UUID.randomUUID().toString()
+
+/** Guardia, estado del sistema, ajustes de alarma y llamadas, prueba y diagnóstico. */
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val c = app.container
 
@@ -58,25 +62,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val message: StateFlow<String?> = _message.asStateFlow()
 
     init {
-        // El estado cambia fuera de la app (Ajustes, No molestar, volumen): se vuelve a leer a menudo.
-        viewModelScope.launch {
-            while (isActive) {
-                refreshStatus()
-                delay(3_000)
-            }
-        }
+        // Cambios que avisan solos (ajustes, servicio, detector): se recalcula al momento.
         viewModelScope.launch {
             combine(c.settings.settings, GuardService.running, GuardNotificationListener.connected) { _, _, _ -> }
                 .collect { refreshStatus() }
         }
     }
 
+    /**
+     * Lo que cambia fuera de la app sin avisar (permisos en Ajustes, No molestar, volumen) se vuelve a
+     * leer cada 3 s, pero SOLO mientras la app está en pantalla: la interfaz llama a esto con
+     * repeatOnLifecycle(STARTED), así en segundo plano no gasta batería.
+     */
+    suspend fun pollStatus() {
+        while (currentCoroutineContext().isActive) {
+            refreshStatusNow()
+            delay(3_000)
+        }
+    }
+
     /** Consultas al sistema (varias llamadas binder): fuera del hilo principal. */
     fun refreshStatus() {
+        viewModelScope.launch { refreshStatusNow() }
+    }
+
+    private suspend fun refreshStatusNow() {
         val s = settings.value ?: return
-        viewModelScope.launch(Dispatchers.Default) {
-            _status.value = c.statusChecker.check(s, GuardService.running.value)
-        }
+        _status.value = withContext(Dispatchers.Default) { c.statusChecker.check(s, GuardService.running.value) }
     }
 
     fun startGuard() = viewModelScope.launch { c.guardController.start() }
@@ -95,6 +107,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun stopAlarm() = c.alarmController.stop("Detenida por el usuario")
 
+    fun showMessage(text: String) {
+        _message.value = text
+    }
+
     fun consumeMessage() {
         _message.value = null
     }
@@ -105,10 +121,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setSound(source: SoundSource) = edit { it.copy(soundSource = source) }
     fun setWakeOnPhoneCalls(on: Boolean) = edit { it.copy(wakeOnPhoneCalls = on) }
     fun setWakeOnAppCalls(on: Boolean) = edit { it.copy(wakeOnAppCalls = on) }
+    fun setCallMode(mode: CallMode) = edit { it.copy(callMode = mode) }
+    fun setWakeOnUnidentifiedCalls(on: Boolean) = edit { it.copy(wakeOnUnidentifiedCalls = on) }
+    fun setLearnConversations(on: Boolean) = edit { it.copy(learnConversations = on) }
     fun setDiagnostics(on: Boolean) = edit { it.copy(diagnosticsEnabled = on) }
     fun setOnboardingDone(done: Boolean) = edit { it.copy(onboardingDone = done) }
 
     fun clearDiagnostics() = c.diagnostics.clear()
+
+    fun clearHistory() = viewModelScope.launch {
+        c.history.clear()
+        _message.value = "Historial borrado"
+    }
 
     private fun edit(block: (GuardSettings) -> GuardSettings) {
         viewModelScope.launch { c.settings.update(block) }
@@ -117,6 +141,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
 data class InstalledApp(val packageName: String, val label: String)
 
+/** Lo que despierta: apps, conversaciones, palabras clave y llamadas. */
 class RulesViewModel(app: Application) : AndroidViewModel(app) {
     private val c = app.container
 
@@ -124,23 +149,20 @@ class RulesViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.rules }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /** Chats de WhatsApp vistos en notificaciones, el más reciente primero. */
+    /** «Conversaciones detectadas», la más reciente primero. */
     val seenChats: StateFlow<List<SeenChat>> = c.seenChats.chats
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    fun clearSeenChats() = viewModelScope.launch { c.seenChats.clear() }
-
-    /** Una regla por chat elegido; los que ya tienen regla del mismo tipo y nombre no se duplican. */
-    fun addChatRules(chats: List<SeenChat>) = viewModelScope.launch {
-        c.settings.update { s ->
-            val fresh = chats.filterNot { chat -> s.rules.any { it.watches(chat) } }
-                .map { Rule(id = UUID.randomUUID().toString(), type = it.ruleType, groupName = it.name) }
-            s.copy(rules = s.rules + fresh)
-        }
-    }
-
     private val _apps = MutableStateFlow<List<InstalledApp>?>(null)
     val apps: StateFlow<List<InstalledApp>?> = _apps.asStateFlow()
+
+    private fun label(pkg: String): String? = AppInfo.label(getApplication(), pkg, fallback = null).takeIf { it != pkg }
+
+    private fun update(block: (List<Rule>) -> List<Rule>) = viewModelScope.launch {
+        c.settings.update { s -> s.copy(rules = block(s.rules)) }
+    }
+
+    fun clearSeenChats() = viewModelScope.launch { c.seenChats.clear() }
 
     fun loadApps() {
         if (_apps.value != null) return
@@ -168,20 +190,38 @@ class RulesViewModel(app: Application) : AndroidViewModel(app) {
             .toList()
     }
 
-    fun save(rule: Rule) = viewModelScope.launch {
-        c.settings.update { s ->
-            val exists = s.rules.any { it.id == rule.id }
-            s.copy(rules = if (exists) s.rules.map { if (it.id == rule.id) rule else it } else s.rules + rule)
-        }
+    /** Añadir una app: empieza vigilando todos sus avisos (seguro); luego se puede limitar a chats. */
+    fun addApp(app: InstalledApp): String {
+        val key = RuleEdits.appKeyOf(app.packageName)
+        update { RuleEdits.setAllNotifications(it, key, on = true, label = app.label, newId = ::newId) }
+        return key
     }
 
-    fun delete(id: String) = viewModelScope.launch {
-        c.settings.update { s -> s.copy(rules = s.rules.filterNot { it.id == id }) }
+    fun setAllNotifications(appKey: String, on: Boolean) =
+        update { RuleEdits.setAllNotifications(it, appKey, on, label(appKey), ::newId) }
+
+    fun removeApp(appKey: String) = update { RuleEdits.removeApp(it, appKey) }
+
+    fun addConversations(chats: List<SeenChat>) =
+        update { RuleEdits.addConversations(it, chats, ::label, ::newId) }
+
+    fun addManualConversation(appKey: String, name: String, isGroup: Boolean) =
+        update { RuleEdits.addManualConversation(it, appKey, name, isGroup, label(appKey), ::newId) }
+
+    fun addCallContact(name: String, alternativeName: String?, number: String?) =
+        update { RuleEdits.addCallContact(it, name, alternativeName, number, ::newId) }
+
+    fun addCallNumber(number: String, label: String?) =
+        update { RuleEdits.addCallNumber(it, number, label, ::newId) }
+
+    fun save(rule: Rule) = update { rules ->
+        val exists = rules.any { it.id == rule.id }
+        if (exists) rules.map { if (it.id == rule.id) rule else it } else rules + rule
     }
 
-    fun setEnabled(id: String, enabled: Boolean) = viewModelScope.launch {
-        c.settings.update { s -> s.copy(rules = s.rules.map { if (it.id == id) it.copy(enabled = enabled) else it }) }
-    }
+    fun delete(id: String) = update { rules -> rules.filterNot { it.id == id } }
+
+    fun setEnabled(id: String, enabled: Boolean) = update { rules -> rules.map { if (it.id == id) it.copy(enabled = enabled) else it } }
 }
 
 class HistoryViewModel(app: Application) : AndroidViewModel(app) {
@@ -280,7 +320,3 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
         if (awaitingPermission && s is UpdateUi.Downloaded && Updater.canInstall(getApplication())) install(s)
     }
 }
-
-/** Esta regla ya vigila ese chat (mismo tipo y mismo nombre normalizado). */
-fun Rule.watches(chat: SeenChat): Boolean =
-    type == chat.ruleType && TextNormalizer.groupKey(groupName.orEmpty()) == TextNormalizer.groupKey(chat.name)
