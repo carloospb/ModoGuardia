@@ -12,7 +12,7 @@ fun Rule.watches(chat: SeenChat): Boolean =
  */
 object RuleEdits {
 
-    /** Regla «todas las notificaciones» de una app: WHATSAPP_ANY para WhatsApp, APP para el resto. */
+    /** Regla «todas las notificaciones» de una app (WHATSAPP_ANY solo en reglas heredadas). */
     private fun isAllRule(rule: Rule, appKey: String) = when (rule.type) {
         RuleType.WHATSAPP_ANY -> appKey == WhatsApp.KEY
         RuleType.APP -> rule.appKey == appKey
@@ -26,16 +26,47 @@ object RuleEdits {
     fun setAllNotifications(rules: List<Rule>, appKey: String, on: Boolean, label: String?, newId: () -> String): List<Rule> {
         if (!on) return rules.map { if (isAllRule(it, appKey)) it.copy(enabled = false) else it }
         if (rules.any { isAllRule(it, appKey) }) return rules.map { if (isAllRule(it, appKey)) it.copy(enabled = true) else it }
-        val rule = if (appKey == WhatsApp.KEY) {
-            Rule(id = newId(), type = RuleType.WHATSAPP_ANY)
-        } else {
-            Rule(id = newId(), type = RuleType.APP, packageName = appKey, appLabel = label)
-        }
-        return rules + rule
+        return rules + Rule(id = newId(), type = RuleType.APP, packageName = appKey, appLabel = label)
     }
 
-    /** Clave de app con la que se agrupa un paquete: WhatsApp y Business van juntos. */
-    fun appKeyOf(packageName: String): String = if (WhatsApp.isWhatsApp(packageName)) WhatsApp.KEY else packageName
+    /**
+     * WhatsApp y WhatsApp Business por separado, sin perder nada de lo que ya sonaba:
+     *  * Reglas que valían para las dos a la vez (sin app: las de 1.0/1.1 y las de WhatsApp de la 1.2.0)
+     *    → una regla por cada WhatsApp instalado ([installed]): suenan exactamente igual que antes.
+     *  * Reglas del WhatsApp normal cuando solo está instalado Business (la 1.2.0 las mostraba en una
+     *    tarjeta «WhatsApp» que era en realidad Business) → pasan a Business.
+     * null si no hay nada que cambiar. Sin ningún WhatsApp instalado, todo se queda como está.
+     */
+    fun splitLegacyWhatsApp(rules: List<Rule>, installed: Set<String>, newId: () -> String): List<Rule>? {
+        val targets = WhatsApp.PACKAGES.filter { it in installed }
+        val onlyBusiness = targets == listOf(WhatsApp.BUSINESS)
+        val orphanPersonal = onlyBusiness && rules.any { !it.isLegacyWhatsApp && it.packageName == WhatsApp.PERSONAL }
+        if (targets.isEmpty() || (rules.none { it.isLegacyWhatsApp } && !orphanPersonal)) return null
+        val out = mutableListOf<Rule>()
+        fun alreadyThere(candidate: Rule) = (out + rules).any { r ->
+            !r.isLegacyWhatsApp && r.type == candidate.type && r.packageName == candidate.packageName &&
+                TextNormalizer.groupKey(r.name.orEmpty()) == TextNormalizer.groupKey(candidate.name.orEmpty())
+        }
+        rules.forEach { rule ->
+            if (orphanPersonal && !rule.isLegacyWhatsApp && rule.packageName == WhatsApp.PERSONAL) {
+                val moved = rule.copy(packageName = WhatsApp.BUSINESS)
+                if (!alreadyThere(moved) || moved.type == RuleType.KEYWORDS) out += moved
+                return@forEach
+            }
+            if (!rule.isLegacyWhatsApp) {
+                out += rule
+                return@forEach
+            }
+            targets.forEachIndexed { i, pkg ->
+                val split = when (rule.type) {
+                    RuleType.WHATSAPP_ANY -> Rule(id = if (i == 0) rule.id else newId(), type = RuleType.APP, enabled = rule.enabled, packageName = pkg)
+                    else -> rule.copy(id = if (i == 0) rule.id else newId(), packageName = pkg)
+                }
+                if (!alreadyThere(split)) out += split
+            }
+        }
+        return out
+    }
 
     /** Todas las reglas de una app (todas, conversaciones y palabras clave de esa app). */
     fun removeApp(rules: List<Rule>, appKey: String): List<Rule> = rules.filterNot { !it.isCall && it.appKey == appKey }
@@ -50,8 +81,8 @@ object RuleEdits {
                 out + Rule(
                     id = newId(),
                     type = chat.ruleType,
-                    packageName = chat.rulePackage,
-                    appLabel = chat.rulePackage?.let(label),
+                    packageName = chat.packageName,
+                    appLabel = label(chat.packageName),
                     name = chat.name,
                     conversationId = chat.conversationId,
                 )

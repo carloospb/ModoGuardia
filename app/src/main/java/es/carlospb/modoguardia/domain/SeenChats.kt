@@ -11,11 +11,8 @@ data class SeenChat(
 ) {
     val ruleType: RuleType get() = if (isGroup) RuleType.GROUP else RuleType.PERSON
 
-    /** App de la regla que se crea al elegirla: null para WhatsApp (vale para WhatsApp y Business). */
-    val rulePackage: String? get() = packageName.takeUnless(WhatsApp::isWhatsApp)
-
-    /** Clave de la app para agrupar en la interfaz (WhatsApp y Business juntos, como sus reglas). */
-    val appKey: String get() = if (WhatsApp.isWhatsApp(packageName)) WhatsApp.KEY else packageName
+    /** App de la conversación (WhatsApp y WhatsApp Business son apps distintas). */
+    val appKey: String get() = packageName
 }
 
 /**

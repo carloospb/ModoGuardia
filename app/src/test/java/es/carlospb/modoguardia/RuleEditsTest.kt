@@ -1,5 +1,6 @@
 package es.carlospb.modoguardia
 
+import es.carlospb.modoguardia.domain.Rule
 import es.carlospb.modoguardia.domain.RuleEdits
 import es.carlospb.modoguardia.domain.RuleType
 import es.carlospb.modoguardia.domain.SeenChat
@@ -31,10 +32,14 @@ class RuleEditsTest {
     }
 
     @Test
-    fun `whatsapp all notifications uses the whatsapp rule for both apps`() {
-        val rules = RuleEdits.setAllNotifications(emptyList(), WhatsApp.KEY, on = true, label = null, newId = id)
-        assertEquals(RuleType.WHATSAPP_ANY, rules.single().type)
-        assertEquals(WhatsApp.KEY, RuleEdits.appKeyOf("com.whatsapp.w4b"))
+    fun `whatsapp and whatsapp business each have their own all notifications rule`() {
+        var rules = RuleEdits.setAllNotifications(emptyList(), WhatsApp.PERSONAL, on = true, label = "WhatsApp", newId = id)
+        rules = RuleEdits.setAllNotifications(rules, WhatsApp.BUSINESS, on = true, label = "WhatsApp Business", newId = id)
+        assertEquals(listOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), rules.map { it.packageName })
+        assertTrue(rules.all { it.type == RuleType.APP })
+        // Apagar «todos los avisos» de una no toca la otra.
+        rules = RuleEdits.setAllNotifications(rules, WhatsApp.PERSONAL, on = false, label = null, newId = id)
+        assertEquals(listOf(false, true), rules.map { it.enabled })
     }
 
     @Test
@@ -44,7 +49,7 @@ class RuleEditsTest {
         var rules = RuleEdits.addConversations(emptyList(), listOf(carlos, soporte), { "Telegram" }, id)
         assertEquals(2, rules.size)
         val wa = rules.first { it.name == "Carlos" }
-        assertNull("WhatsApp: sin app concreta, vale también para Business", wa.packageName)
+        assertEquals("Cada regla es de su app: WhatsApp, no Business", WA, wa.packageName)
         assertEquals("34600@s", wa.conversationId)
         assertEquals(TG, rules.first { it.name == "Soporte" }.packageName)
         // Volver a elegirlos (o el mismo con otra forma de escribirse) no duplica.
@@ -103,5 +108,54 @@ class RuleEditsTest {
         val rules = RuleEdits.addCallContact(emptyList(), "  ", null, "611 22 33 44", id)
         assertFalse(rules.single().isContact)
         assertEquals(listOf("611 22 33 44"), rules.single().numbers)
+    }
+
+    @Test
+    fun `old rules for both whatsapps are split when both are installed`() {
+        val rules = listOf(
+            groupRule("GUARDIAS").copy(id = "g"),
+            personRule("Carlos").copy(id = "p", enabled = false),
+            Rule(id = "any", type = RuleType.WHATSAPP_ANY),
+            appRule("org.telegram.messenger", "Telegram"),
+        )
+        val split = RuleEdits.splitLegacyWhatsApp(rules, setOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), id)!!
+        assertTrue(split.none { it.isLegacyWhatsApp })
+        assertEquals(listOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), split.filter { it.name == "GUARDIAS" }.map { it.packageName })
+        assertEquals("g", split.first { it.name == "GUARDIAS" }.id)
+        // La pausa se conserva en las dos copias.
+        assertEquals(listOf(false, false), split.filter { it.name == "Carlos" }.map { it.enabled })
+        assertEquals(listOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), split.filter { it.type == RuleType.APP && it.packageName != "org.telegram.messenger" }.map { it.packageName })
+        assertTrue(split.any { it.packageName == "org.telegram.messenger" })
+        // Siguen sonando igual que antes: un aviso de cualquiera de las dos coincide.
+        val business = waGroupMessage("GUARDIAS", "Ana", "caída", ts = 1).copy(packageName = WhatsApp.BUSINESS)
+        assertTrue(es.carlospb.modoguardia.domain.RuleEngine.evaluate(business, split.filter { it.name == "GUARDIAS" }) is es.carlospb.modoguardia.domain.Evaluation.Match)
+    }
+
+    @Test
+    fun `old rules go to the only whatsapp installed and stay as they are with none`() {
+        val rules = listOf(groupRule("GUARDIAS").copy(id = "g"))
+        val onlyBusiness = RuleEdits.splitLegacyWhatsApp(rules, setOf(WhatsApp.BUSINESS), id)!!
+        assertEquals(listOf("g" to WhatsApp.BUSINESS), onlyBusiness.map { it.id to it.packageName })
+        assertNull(RuleEdits.splitLegacyWhatsApp(rules, emptySet(), id))
+        assertNull(RuleEdits.splitLegacyWhatsApp(onlyBusiness, setOf(WhatsApp.BUSINESS), id))
+    }
+
+    @Test
+    fun `splitting never duplicates a rule that already exists for that app`() {
+        val rules = listOf(groupRule("Soporte").copy(id = "old"), groupRule("Soporte").copy(id = "new", packageName = WhatsApp.PERSONAL))
+        val split = RuleEdits.splitLegacyWhatsApp(rules, setOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), id)!!
+        assertEquals(2, split.size)
+        assertEquals(setOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), split.map { it.packageName }.toSet())
+    }
+
+    @Test
+    fun `whatsapp rules of a business only phone move to whatsapp business`() {
+        // La 1.2.0 enseñaba Business como «WhatsApp» y guardaba sus palabras clave en el paquete normal.
+        val rules = listOf(keywordRule("URGENTE", pkg = WhatsApp.PERSONAL), appRule(WhatsApp.PERSONAL, "WhatsApp"), appRule("org.telegram.messenger", "Telegram"))
+        val moved = RuleEdits.splitLegacyWhatsApp(rules, setOf(WhatsApp.BUSINESS), id)!!
+        assertEquals(listOf(WhatsApp.BUSINESS, WhatsApp.BUSINESS, "org.telegram.messenger"), moved.map { it.packageName })
+        // Con el WhatsApp normal instalado no se toca: son suyas.
+        assertNull(RuleEdits.splitLegacyWhatsApp(rules, setOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), id))
+        assertNull(RuleEdits.splitLegacyWhatsApp(moved, setOf(WhatsApp.BUSINESS), id))
     }
 }

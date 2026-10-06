@@ -256,34 +256,38 @@ private fun WhatWakesYou(
 ) {
     val rules by rulesVm.rules.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
-    val whatsappInstalled = remember { WhatsApp.PACKAGES.any { AppInfo.isInstalled(context, it) } }
+    val installedWhatsApps = remember { WhatsApp.PACKAGES.filter { AppInfo.isInstalled(context, it) } }
     val apps = remember(rules) { WatchSummary.appsOf(rules) }
-    val wa = apps.firstOrNull { it.key == WhatsApp.KEY }
+    // WhatsApp y WhatsApp Business por separado (suele ser una personal y otra del trabajo): cada una
+    // si está instalada o si ya tiene reglas.
+    val whatsapps = WhatsApp.PACKAGES.filter { pkg -> pkg in installedWhatsApps || apps.any { it.key == pkg } }
     StepTitle("¿Qué debe despertarte?", "Elige apps y, si quieres, solo algunos de sus chats. Podrás cambiarlo cuando quieras en «Reglas».")
-    // WhatsApp, si está instalado o si ya tiene reglas (p. ej. creadas antes de reinstalarlo).
-    if (whatsappInstalled || wa != null) {
-        SectionTitle("WhatsApp")
+    whatsapps.forEach { pkg ->
+        val label = rememberAppLabel(pkg)
+        val wa = apps.firstOrNull { it.key == pkg }
+        SectionTitle(label)
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ChoiceCard(
-                "Cualquier mensaje de WhatsApp",
-                "Todo lo que llegue a WhatsApp te despierta.",
+                "Cualquier mensaje de $label",
+                "Todo lo que llegue a $label te despierta.",
                 selected = wa?.allNotifications == true,
                 icon = Icons.Rounded.NotificationsActive,
-            ) { rulesVm.setAllNotifications(WhatsApp.KEY, true) }
+            ) { rulesVm.setAllNotifications(pkg, true) }
             ChoiceCard(
                 "Solo los chats que elija",
                 wa?.takeIf { it.conversationCount > 0 }?.let { appSummary(it) } ?: "Personas y grupos concretos, por ejemplo tu grupo de guardias.",
                 selected = wa != null && !wa.allNotifications && wa.conversationCount > 0,
                 icon = Icons.Rounded.PeopleAlt,
             ) {
-                rulesVm.setAllNotifications(WhatsApp.KEY, false)
-                onPickChats(WhatsApp.KEY)
+                rulesVm.setAllNotifications(pkg, false)
+                onPickChats(pkg)
             }
         }
     }
     SectionTitle("Otras apps")
     GuardCard(contentPadding = PaddingValues(horizontal = 18.dp, vertical = 4.dp)) {
-        apps.filter { it.key != WhatsApp.KEY }.forEachIndexed { i, app ->
+        val others = apps.filter { it.key !in whatsapps }
+        others.forEachIndexed { i, app ->
             if (i > 0) RowDivider()
             ListRow(
                 title = rememberAppLabel(app.key, app.storedLabel),
@@ -292,7 +296,7 @@ private fun WhatWakesYou(
                 onClick = { onOpenApp(app.key) },
             )
         }
-        if (apps.any { it.key != WhatsApp.KEY }) RowDivider()
+        if (others.isNotEmpty()) RowDivider()
         ListRow(
             title = "Añadir una app",
             subtitle = "Telegram, correo, monitorización, mensajería del trabajo…",

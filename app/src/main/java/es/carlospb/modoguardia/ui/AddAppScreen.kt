@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import es.carlospb.modoguardia.domain.RuleEdits
 import es.carlospb.modoguardia.domain.TextNormalizer
 import es.carlospb.modoguardia.domain.WatchSummary
 import es.carlospb.modoguardia.ui.theme.GuardColors
@@ -82,7 +81,7 @@ private fun AppList(list: List<InstalledApp>, query: String, watched: Set<String
                 }
             }
             items(filtered, key = { it.packageName }) { app ->
-                val key = RuleEdits.appKeyOf(app.packageName)
+                val key = app.packageName
                 val already = key in watched
                 ListRow(
                     title = app.label,

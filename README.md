@@ -13,9 +13,10 @@ para hasta que pulsas **DETENER ALARMA**.
 * **Centro de control**: un gran escudo activa o desactiva la guardia (animación, vibración
   táctil, estado inequívoco) y debajo se ve qué se vigila: apps, chats, contactos de llamada y el
   estado real del sistema.
-* **Qué te despierta**, por aplicación (WhatsApp, Telegram, Signal, Mensajes, correo,
-  monitorización…): **todos sus avisos** o **solo los chats elegidos**, separados en **personas** y
-  **grupos**, más **palabras clave** (cualquiera / todas, con o sin mayúsculas y tildes).
+* **Qué te despierta**, por aplicación (WhatsApp, WhatsApp Business, Telegram, Signal, Mensajes,
+  correo, monitorización…): **todos sus avisos** o **solo los chats elegidos**, separados en
+  **personas** y **grupos**, más **palabras clave** (cualquiera / todas, con o sin mayúsculas y
+  tildes). WhatsApp y WhatsApp Business se vigilan por separado (personal y trabajo).
 * **Conversaciones detectadas**: ninguna app de chat deja leer su lista de conversaciones, así que
   cada chat que manda un aviso aparece en un selector (búsqueda, Todos / Personas / Grupos,
   selección múltiple). Se guarda solo el nombre, nunca los mensajes. También se pueden escribir.

@@ -49,17 +49,20 @@ class ReviewRegressionTest {
     private val alarm = FakeAlarm()
     private val engine = GuardEngine({ snapshot }, Deduplicator(), alarm, FakeHistory(), clock = { now })
 
-    // 1. WhatsApp y WhatsApp Business son una sola app en todas las reglas.
+    // 1. WhatsApp y WhatsApp Business se vigilan por separado: una regla de una no salta con la otra.
     @Test
-    fun `whatsapp keyword and app rules also cover whatsapp business`() {
-        val business = personMessage("Carlos", "URGENTE: caída", 1, pkg = "com.whatsapp.w4b", appName = "WA Business")
-        val keywords = keywordRule("URGENTE", pkg = WhatsApp.KEY)
-        assertTrue(RuleEngine.evaluate(business, listOf(keywords)) is Evaluation.Match)
-        val legacyApp = appRule("com.whatsapp", "WhatsApp")
-        assertTrue(RuleEngine.evaluate(business, listOf(legacyApp)) is Evaluation.Match)
-        assertEquals(WhatsApp.KEY, keywordRule("X", pkg = "com.whatsapp.w4b").appKey)
-        // Otra app no se cuela.
-        assertTrue(RuleEngine.evaluate(personMessage("Carlos", "URGENTE", 1, pkg = TG, appName = "Telegram"), listOf(keywords)) is Evaluation.NoMatch)
+    fun `whatsapp and whatsapp business rules are kept apart`() {
+        val business = personMessage("Carlos", "URGENTE: caída", 1, pkg = WhatsApp.BUSINESS, appName = "WhatsApp Business")
+        val personal = personMessage("Carlos", "URGENTE: caída", 1, pkg = WhatsApp.PERSONAL, appName = "WhatsApp")
+        val personalKeywords = keywordRule("URGENTE", pkg = WhatsApp.PERSONAL)
+        val businessKeywords = keywordRule("URGENTE", pkg = WhatsApp.BUSINESS)
+        assertTrue(RuleEngine.evaluate(business, listOf(personalKeywords)) is Evaluation.NoMatch)
+        assertTrue(RuleEngine.evaluate(business, listOf(businessKeywords)) is Evaluation.Match)
+        assertTrue(RuleEngine.evaluate(personal, listOf(businessKeywords)) is Evaluation.NoMatch)
+        assertTrue(RuleEngine.evaluate(business, listOf(appRule(WhatsApp.PERSONAL, "WhatsApp"))) is Evaluation.NoMatch)
+        assertTrue(RuleEngine.evaluate(business, listOf(personRule("Carlos", pkg = WhatsApp.PERSONAL))) is Evaluation.NoMatch)
+        assertTrue(RuleEngine.evaluate(business, listOf(personRule("Carlos", pkg = WhatsApp.BUSINESS))) is Evaluation.Match)
+        assertEquals(WhatsApp.BUSINESS, businessKeywords.appKey)
     }
 
     // 2. Un «número privado» en otro idioma no es un nombre.
@@ -133,8 +136,12 @@ class ReviewRegressionTest {
     }
 
     @Test
-    fun `a paused whatsapp all rule stays under the whatsapp card`() {
-        val rules = listOf(Rule(id = "a", type = RuleType.APP, packageName = "com.whatsapp.w4b", enabled = false))
-        assertEquals(WhatsApp.KEY, rules.single().appKey)
+    fun `whatsapp business has its own card`() {
+        val rules = listOf(
+            Rule(id = "a", type = RuleType.APP, packageName = WhatsApp.BUSINESS, enabled = false),
+            personRule("Carlos", pkg = WhatsApp.PERSONAL),
+        )
+        assertEquals(WhatsApp.BUSINESS, rules[0].appKey)
+        assertEquals(listOf(WhatsApp.PERSONAL, WhatsApp.BUSINESS), es.carlospb.modoguardia.domain.WatchSummary.appsOf(rules).map { it.key })
     }
 }

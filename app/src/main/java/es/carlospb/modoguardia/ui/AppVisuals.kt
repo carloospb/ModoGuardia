@@ -60,9 +60,8 @@ object AppInfo {
         false
     }
 
-    /** Paquete que representa a una clave: para WhatsApp, el que esté instalado (o Business). */
-    fun resolve(context: Context, key: String): String =
-        if (key == WhatsApp.KEY && !isInstalled(context, key) && isInstalled(context, "com.whatsapp.w4b")) "com.whatsapp.w4b" else key
+    /** Paquete que representa a una clave de app (hoy, el mismo: cada app es la suya). */
+    fun resolve(@Suppress("UNUSED_PARAMETER") context: Context, key: String): String = key
 
     fun label(context: Context, key: String, fallback: String? = null): String = labels.getOrPut(key) {
         val pkg = resolve(context, key)
@@ -70,7 +69,11 @@ object AppInfo {
             val pm = context.packageManager
             pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
         } catch (_: PackageManager.NameNotFoundException) {
-            return fallback ?: if (key == WhatsApp.KEY) "WhatsApp" else key
+            return fallback ?: when (key) {
+                WhatsApp.PERSONAL -> "WhatsApp"
+                WhatsApp.BUSINESS -> "WhatsApp Business"
+                else -> key
+            }
         }
     }
 

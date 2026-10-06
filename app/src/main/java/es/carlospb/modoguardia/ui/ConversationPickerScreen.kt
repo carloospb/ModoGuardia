@@ -204,7 +204,7 @@ fun ConversationPickerScreen(appKey: String?, rulesVm: RulesViewModel, onBack: (
     }
 
     if (manual) {
-        val target = appFilter ?: appKey ?: es.carlospb.modoguardia.domain.WhatsApp.KEY
+        val target = appFilter ?: appKey ?: es.carlospb.modoguardia.domain.WhatsApp.PERSONAL
         ManualConversationDialog(
             appLabel = rememberAppLabel(target),
             onDismiss = { manual = false },

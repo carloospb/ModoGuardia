@@ -16,7 +16,6 @@ import es.carlospb.modoguardia.domain.CallMode
 import es.carlospb.modoguardia.domain.Rule
 import es.carlospb.modoguardia.domain.RuleEdits
 import es.carlospb.modoguardia.domain.SeenChat
-import es.carlospb.modoguardia.domain.WhatsApp
 import es.carlospb.modoguardia.service.DiagnosticEntry
 import es.carlospb.modoguardia.service.GuardNotificationListener
 import es.carlospb.modoguardia.service.GuardService
@@ -171,10 +170,6 @@ class RulesViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** WhatsApp / WhatsApp Business instalados (visibles por <queries> del lanzador). */
-    fun installedWhatsApp(): List<InstalledApp> =
-        (_apps.value ?: queryLaunchableApps()).filter { WhatsApp.isWhatsApp(it.packageName) }
-
     private fun queryLaunchableApps(): List<InstalledApp> {
         val pm = getApplication<Application>().packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -192,7 +187,7 @@ class RulesViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Añadir una app: empieza vigilando todos sus avisos (seguro); luego se puede limitar a chats. */
     fun addApp(app: InstalledApp): String {
-        val key = RuleEdits.appKeyOf(app.packageName)
+        val key = app.packageName
         update { RuleEdits.setAllNotifications(it, key, on = true, label = app.label, newId = ::newId) }
         return key
     }

@@ -169,8 +169,14 @@ fun AppDetailScreen(
                 PrimaryButton("Elegir chats", onClick = { onPickChats(appKey) }, icon = Icons.Rounded.Add, modifier = Modifier.weight(1f))
                 SecondaryButton("Escribir", onClick = { manual = true }, icon = Icons.Rounded.EditNote, modifier = Modifier.weight(1f))
             }
-            if (appKey == WhatsApp.KEY) {
-                Hint("Vale para WhatsApp y WhatsApp Business.")
+            if (WhatsApp.isWhatsApp(appKey)) {
+                Hint(
+                    if (appKey == WhatsApp.BUSINESS) {
+                        "Solo WhatsApp Business. WhatsApp tiene su propia tarjeta en «Reglas»."
+                    } else {
+                        "Solo WhatsApp. WhatsApp Business tiene su propia tarjeta en «Reglas»."
+                    },
+                )
             }
 
             SectionTitle("Palabras clave en $label")

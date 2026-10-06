@@ -20,7 +20,7 @@ data class WatchedApp(val key: String, val rules: List<Rule>) {
 
 /** Resumen de lo vigilado, para el panel de inicio y el estado. Puro: se prueba en la JVM. */
 data class WatchSummary(
-    /** Apps con alguna regla activa. WhatsApp primero. */
+    /** Apps con alguna regla activa: WhatsApp, WhatsApp Business y el resto. */
     val apps: List<WatchedApp>,
     /** Reglas de palabras clave para cualquier app. */
     val anyAppKeywords: List<Rule>,
@@ -53,12 +53,20 @@ data class WatchSummary(
             appCalls = wakeOnAppCalls,
         )
 
-        /** Todas las apps con reglas (también las que están en pausa), WhatsApp primero. */
+        /** Todas las apps con reglas (también las que están en pausa): WhatsApp, WhatsApp Business y el resto. */
         fun appsOf(rules: List<Rule>): List<WatchedApp> = rules
             .filter { !it.isCall }
             .mapNotNull { r -> r.appKey?.let { it to r } }
             .groupBy({ it.first }, { it.second })
             .map { (key, list) -> WatchedApp(key, list) }
-            .sortedWith(compareBy<WatchedApp> { it.key != WhatsApp.KEY }.thenBy { (it.storedLabel ?: it.key).lowercase() })
+            .sortedWith(
+                compareBy<WatchedApp> {
+                    when (it.key) {
+                        WhatsApp.PERSONAL -> 0
+                        WhatsApp.BUSINESS -> 1
+                        else -> 2
+                    }
+                }.thenBy { (it.storedLabel ?: it.key).lowercase() },
+            )
     }
 }

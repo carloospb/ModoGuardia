@@ -56,6 +56,7 @@ abstract class UiTestBase {
         Rule(id = "g1", type = RuleType.GROUP, name = "Guardias Soporte"),
         Rule(id = "p1", type = RuleType.PERSON, name = "Carlos"),
         Rule(id = "p2", type = RuleType.PERSON, name = "Laura"),
+        Rule(id = "b1", type = RuleType.PERSON, packageName = "com.whatsapp.w4b", appLabel = "WhatsApp Business", name = "Jefe de turno"),
         Rule(id = "t1", type = RuleType.GROUP, packageName = TG, appLabel = "Telegram", name = "Equipo técnico"),
         Rule(id = "a1", type = RuleType.APP, packageName = "com.pagerduty.android", appLabel = "PagerDuty"),
         Rule(id = "k1", type = RuleType.KEYWORDS, keywords = listOf("URGENTE", "CAÍDA")),

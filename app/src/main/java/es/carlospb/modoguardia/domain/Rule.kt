@@ -4,7 +4,10 @@ enum class RuleType {
     /** Cualquier notificación de una app concreta (por package name). */
     APP,
 
-    /** Cualquier notificación de WhatsApp o WhatsApp Business. */
+    /**
+     * Cualquier notificación de WhatsApp o WhatsApp Business. Solo existe en reglas heredadas de
+     * 1.0/1.1: ahora «todos los avisos» es una regla [APP] por cada app.
+     */
     WHATSAPP_ANY,
 
     /** Mensaje de un grupo concreto de una app de chat (sin app = WhatsApp). */
@@ -38,7 +41,10 @@ data class Rule(
     val id: String,
     val type: RuleType,
     val enabled: Boolean = true,
-    /** APP: obligatorio. GROUP/PERSON: app de la conversación (null = WhatsApp). KEYWORDS: null = cualquier app. */
+    /**
+     * APP: obligatorio. GROUP/PERSON: app de la conversación (null solo en reglas heredadas de
+     * 1.0/1.1: WhatsApp y WhatsApp Business a la vez). KEYWORDS: null = cualquier app.
+     */
     val packageName: String? = null,
     val appLabel: String? = null,
     /** GROUP/PERSON: nombre de la conversación tal como lo trae el aviso. CALL: nombre para mostrar. */
@@ -64,27 +70,31 @@ data class Rule(
 
     fun cleanKeywords(): List<String> = keywords.map { TextNormalizer.clean(it) }.filter { it.isNotEmpty() }
 
-    /** La regla es de WhatsApp: vale para WhatsApp y WhatsApp Business, como en la interfaz. */
-    private val isWhatsAppFamily: Boolean get() = packageName?.let(WhatsApp::isWhatsApp) == true
+    /**
+     * Regla heredada de 1.0/1.1 que vale para WhatsApp y WhatsApp Business a la vez (sin app). Se
+     * divide en una por app al arrancar ([RuleEdits.splitLegacyWhatsApp]).
+     */
+    val isLegacyWhatsApp: Boolean
+        get() = type == RuleType.WHATSAPP_ANY || ((type == RuleType.GROUP || type == RuleType.PERSON) && packageName.isNullOrBlank())
 
-    /** El aviso de [pkg] es de la app de esta regla (WhatsApp cuenta con Business). */
-    private fun samePackage(pkg: String): Boolean = if (isWhatsAppFamily) WhatsApp.isWhatsApp(pkg) else pkg == packageName
-
-    /** Si esta regla puede evaluar avisos de [pkg]. Las de llamada no evalúan avisos. */
+    /**
+     * Si esta regla puede evaluar avisos de [pkg]. Cada regla es de UNA app: WhatsApp y WhatsApp
+     * Business son distintas (salvo las reglas heredadas). Las de llamada no evalúan avisos.
+     */
     fun appliesTo(pkg: String): Boolean = when (type) {
-        RuleType.APP -> samePackage(pkg)
+        RuleType.APP -> pkg == packageName
         RuleType.WHATSAPP_ANY -> WhatsApp.isWhatsApp(pkg)
-        RuleType.GROUP, RuleType.PERSON -> if (packageName.isNullOrBlank()) WhatsApp.isWhatsApp(pkg) else samePackage(pkg)
-        RuleType.KEYWORDS -> packageName.isNullOrBlank() || samePackage(pkg)
+        RuleType.GROUP, RuleType.PERSON -> if (packageName.isNullOrBlank()) WhatsApp.isWhatsApp(pkg) else pkg == packageName
+        RuleType.KEYWORDS -> packageName.isNullOrBlank() || pkg == packageName
         RuleType.CALL -> false
     }
 
     /** App a la que pertenece la regla, para agruparla en la interfaz (null = cualquier app / llamadas). */
     val appKey: String?
         get() = when (type) {
-            RuleType.APP, RuleType.KEYWORDS -> packageName?.takeIf { it.isNotBlank() }?.let { if (WhatsApp.isWhatsApp(it)) WhatsApp.KEY else it }
+            RuleType.APP, RuleType.KEYWORDS -> packageName?.takeIf { it.isNotBlank() }
             RuleType.WHATSAPP_ANY -> WhatsApp.KEY
-            RuleType.GROUP, RuleType.PERSON -> packageName?.takeIf { it.isNotBlank() }?.let { if (WhatsApp.isWhatsApp(it)) WhatsApp.KEY else it } ?: WhatsApp.KEY
+            RuleType.GROUP, RuleType.PERSON -> packageName?.takeIf { it.isNotBlank() } ?: WhatsApp.KEY
             RuleType.CALL -> null
         }
 

@@ -102,7 +102,7 @@ fun StatusScreen(settings: GuardSettings, status: SystemStatus, vm: MainViewMode
                 val packages = buildSet {
                     settings.rules.filter { it.enabled }.forEach { r ->
                         when (r.type) {
-                            RuleType.APP, RuleType.KEYWORDS -> r.packageName?.let { if (WhatsApp.isWhatsApp(it)) addAll(WhatsApp.PACKAGES) else add(it) }
+                            RuleType.APP, RuleType.KEYWORDS -> r.packageName?.let(::add)
                             RuleType.WHATSAPP_ANY -> addAll(WhatsApp.PACKAGES)
                             RuleType.GROUP, RuleType.PERSON -> r.packageName?.let(::add) ?: addAll(WhatsApp.PACKAGES)
                             RuleType.CALL -> Unit

@@ -40,14 +40,18 @@ Una regla es «qué despierta». Se guardan en una lista en DataStore:
 | Tipo | Significado | Campos |
 |---|---|---|
 | `APP` | Todos los avisos de una app | `packageName` |
-| `WHATSAPP_ANY` | Todos los avisos de WhatsApp y WhatsApp Business | — |
-| `GROUP` / `PERSON` | Un grupo o un chat individual de una app | `packageName` (null = WhatsApp y Business), `name`, `conversationId` (shortcutId, opcional) |
+| `WHATSAPP_ANY` | Heredada de 1.0/1.1: todos los avisos de WhatsApp y WhatsApp Business | — |
+| `GROUP` / `PERSON` | Un grupo o un chat individual de una app | `packageName` (null solo en reglas heredadas: las dos WhatsApp), `name`, `conversationId` (shortcutId, opcional) |
 | `KEYWORDS` | Avisos con ciertas palabras | `packageName` (null = cualquier app), `keywords`, `matchAll`, `ignoreCase` |
 | `CALL` | Llamada de un contacto o número (con «solo contactos elegidos») | `aliases` (nombres del contacto; vacío en un número a mano), `numbers`, `name` (para mostrar) |
 
-Los tipos `WHATSAPP_GROUP` / `WHATSAPP_CHAT` de versiones anteriores se leen como `GROUP` / `PERSON`
-sin app, que es exactamente lo que significaban. Añadir una app nueva no requiere código: sus
-reglas llevan su package name.
+Cada regla es de UNA app: WhatsApp (`com.whatsapp`) y WhatsApp Business (`com.whatsapp.w4b`) se
+vigilan por separado, porque a menudo una es la personal y otra la del trabajo. Las reglas de
+versiones anteriores que valían para las dos (`WHATSAPP_GROUP` / `WHATSAPP_CHAT` / `WHATSAPP_ANY`, y
+las de WhatsApp creadas por la 1.2.0) se leen sin cambios y, al arrancar,
+`RuleEdits.splitLegacyWhatsApp` las divide en una regla por cada WhatsApp instalado: siguen sonando
+igual y ya se pueden ajustar por separado. Añadir una app nueva no requiere código: sus reglas llevan
+su package name.
 
 ## Decisiones
 

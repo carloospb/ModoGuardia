@@ -16,6 +16,8 @@ import es.carlospb.modoguardia.data.SettingsRepository
 import es.carlospb.modoguardia.data.guardDataStore
 import es.carlospb.modoguardia.domain.Deduplicator
 import es.carlospb.modoguardia.domain.GuardEngine
+import es.carlospb.modoguardia.domain.RuleEdits
+import es.carlospb.modoguardia.domain.WhatsApp
 import es.carlospb.modoguardia.service.DiagnosticsStore
 import es.carlospb.modoguardia.service.GuardController
 import es.carlospb.modoguardia.system.SystemStatusChecker
@@ -25,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /** Dependencias del proceso, creadas una vez. Sin framework de DI: el grafo es pequeño. */
 class AppContainer(app: Application) {
@@ -67,6 +70,13 @@ class ModoGuardiaApp : Application() {
         // Si el proceso arranca (p. ej. lo enlaza el lector de notificaciones) con la guardia activa
         // y sin su servicio, se reanuda.
         c.appScope.launch { c.guardController.ensureServiceRunning() }
+        // Reglas de 1.0/1.1 que valían para WhatsApp y Business a la vez: una por cada app instalada.
+        c.appScope.launch {
+            val installed = WhatsApp.PACKAGES.filter { isInstalled(it) }.toSet()
+            c.settings.update { s ->
+                RuleEdits.splitLegacyWhatsApp(s.rules, installed) { UUID.randomUUID().toString() }?.let { s.copy(rules = it) } ?: s
+            }
+        }
         // Privacidad: el historial de versiones anteriores guardaba el inicio de los mensajes.
         c.appScope.launch { runCatching { c.history.stripLegacyMessageText() } }
     }
@@ -74,6 +84,13 @@ class ModoGuardiaApp : Application() {
 
 private fun granted(context: Context, permission: String) =
     ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+private fun Context.isInstalled(pkg: String): Boolean = try {
+    packageManager.getApplicationInfo(pkg, 0)
+    true
+} catch (_: PackageManager.NameNotFoundException) {
+    false
+}
 
 val Context.container: AppContainer
     get() = (applicationContext as ModoGuardiaApp).container
