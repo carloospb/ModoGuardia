@@ -86,6 +86,27 @@
             </intent-filter>
         </activity>
 
+        <!-- Compartir un chat con Modo Guardia: desde WhatsApp, «Exportar chat» da su nombre exacto.
+             Solo se leen el asunto y el NOMBRE del archivo, nunca su contenido. El resto de apps
+             (enlaces, mensajes) reciben una explicacion y «Identificar con un mensaje». -->
+        <activity
+            android:name=".ui.ShareChatActivity"
+            android:exported="true"
+            android:label="@string/share_label"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="application/zip" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
         <!-- Pantalla de alerta. Visible sobre el bloqueo y enciende la pantalla. -->
         <activity
             android:name=".alarm.GuardAlarmActivity"

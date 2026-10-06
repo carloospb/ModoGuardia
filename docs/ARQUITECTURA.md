@@ -23,9 +23,9 @@ PHONE_STATE (RINGING [+ número] / OFFHOOK / IDLE) ─► PhoneStateReceiver ─
 
 | Paquete | Contenido |
 |---|---|
-| `domain/` | Kotlin puro con pruebas JVM: `NotificationEvent`, `Rule` (+ `RuleType`), `RuleEngine` (la única lógica de «¿despierta?»), `Conversations` (grupo / persona / desconocido y sus nombres), `Calls` (`CallMode`, `PhoneNumbers`, `CallerId`), `SeenChats`, `RuleEdits` (cambios de reglas sin duplicados), `WatchSummary` (resumen para el panel), `TextNormalizer`, `Deduplicator`, `GuardEngine`, `UpdatePolicy`. |
+| `domain/` | Kotlin puro con pruebas JVM: `NotificationEvent`, `Rule` (+ `RuleType`), `RuleEngine` (la única lógica de «¿despierta?»), `Conversations` (grupo / persona / desconocido y sus nombres), `Calls` (`CallMode`, `PhoneNumbers`, `CallerId`), `SeenChats`, `ChatCapture` («Identificar con un mensaje»), `SharedChats` (chat compartido desde WhatsApp), `RuleEdits` (cambios de reglas sin duplicados), `WatchSummary` (resumen para el panel), `TextNormalizer`, `Deduplicator`, `GuardEngine`, `UpdatePolicy`. |
 | `data/` | `SettingsRepository` (DataStore: ajustes y reglas en JSON, compatible con lo guardado por 1.0/1.1), `RuleCodec`, `SeenChatsRepository`, `History` (Room). |
-| `service/` | `GuardNotificationListener`, `NotificationParser`, `GuardService` (FGS specialUse + revisión de salud cada minuto), `GuardController`, `DiagnosticsStore` (solo memoria). |
+| `service/` | `GuardNotificationListener`, `NotificationParser`, `GuardService` (FGS specialUse + revisión de salud cada minuto), `GuardController`, `DiagnosticsStore` y `ChatCaptureStore` (solo memoria). |
 | `alarm/` | `AlarmController`, `AlarmService`, `AlarmPlayer` (+ `VolumeRestore`), `GuardNotifications`, `AlarmState`, `GuardAlarmActivity`. |
 | `call/` | `PhoneStateReceiver`. |
 | `receiver/` | `BootReceiver` (BOOT_COMPLETED, MY_PACKAGE_REPLACED). |
@@ -72,6 +72,15 @@ su package name.
   renombrado. Sin candidatos → «grupo no identificado» en el historial.
 * **Conversaciones detectadas**: de cada aviso de chat se guarda app, nombre, tipo, shortcutId y
   hora (nunca el mensaje), como mucho 200 y 90 días sin avisar; se pueden desactivar y borrar.
+* **Identificar el chat exacto** sin esperar a la lista, con lo único que Android hace público:
+  * «Identificar con un mensaje» (`ChatCapture` + `ChatCaptureStore`): mientras la pantalla está
+    abierta (como mucho 10 min) el lector pasa cada aviso; se enseña de qué chat viene, con las dos
+    lecturas si Android no dice si es grupo o persona, y con su shortcutId para que la regla lo
+    reconozca aunque el aviso sea ambiguo. Solo en memoria; al salir se olvida.
+  * Compartir desde WhatsApp (`ShareChatActivity` + `SharedChats`): «Exportar chat» trae el asunto
+    «Chat de WhatsApp con …» y el nombre del archivo. Solo se leen esos dos textos; nunca se abre el
+    archivo ni se lee el texto compartido. Otras apps no dicen el chat al compartir: se explica y se
+    ofrece «Identificar con un mensaje».
 * **Llamadas con «solo contactos elegidos»** (`GuardEngine`, sesión de llamada): la señal RINGING
   (con el número solo si hay «Registro de llamadas») y el aviso del marcador (nombre o número)
   llegan por separado y en cualquier orden; se acumulan y se decide una vez. Una llamada solo se

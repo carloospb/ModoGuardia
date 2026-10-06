@@ -25,6 +25,16 @@ en la cadena de alarma, junto con `./gradlew testDebugUnitTest assembleDebug`.
    Esa misma persona escribe en un grupo que no vigilas → NO suena.
 9. Activa **Diagnóstico** (Estado del sistema) y escribe: comprueba «Tipo de conversación» y
    «Conversación reconocida».
+10. **Identificar con un mensaje**: Reglas → WhatsApp → «Identificar con un mensaje». Desde el otro
+    teléfono escribe en un grupo nuevo → aparece en segundos con su nombre y «Grupo». «Vigilar» →
+    «Vigilado». Sal de la pantalla y vuelve: ya no hay avisos de antes (no se guarda nada).
+    Repite con Telegram (o Slack/Signal) desde «Añadir aplicación».
+11. **Compartir desde WhatsApp**: abre un chat que nunca te haya escrito → ⋮ → Más → Exportar chat →
+    Sin archivos → «Vigilar en Modo Guardia». Debe salir su nombre exacto; elige «No estoy seguro» y
+    «Vigilar este chat». En Reglas → WhatsApp aparece como persona y como grupo. Ese chat te escribe
+    con la guardia activa → suena.
+12. Comparte un enlace o un mensaje desde Telegram con «Vigilar en Modo Guardia» → explica que
+    Telegram no dice el chat y ofrece «Identificar con un mensaje».
 
 ## Llamadas
 

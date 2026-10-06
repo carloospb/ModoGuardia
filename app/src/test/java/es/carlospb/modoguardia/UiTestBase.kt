@@ -135,11 +135,11 @@ abstract class UiTestBase {
         compose.waitForIdle()
     }
 
-    /** Espera (hasta 5 s reales) a que aparezca: listas que cargan de Room o DataStore. */
+    /** Espera (hasta 10 s reales: con toda la batería de pruebas, Room va lento) a que aparezca. */
     protected fun exists(text: String) {
         val matcher = hasText(text, substring = true, ignoreCase = true)
         try {
-            compose.waitUntil(5_000) {
+            compose.waitUntil(10_000) {
                 // Los resultados de Room/DataStore llegan por la cola del hilo principal: se procesa.
                 shadowOf(Looper.getMainLooper()).idle()
                 // Con el reloj de Compose parado no hay fotogramas: se avanza uno para recomponer.

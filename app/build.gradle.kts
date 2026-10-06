@@ -17,8 +17,8 @@ android {
         // Android 10. Por debajo no hay setShowWhenLocked/turnScreenOn ni canales maduros.
         minSdk = 29
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 5
+        versionName = "1.3.0"
         buildConfigField("String", "AUTHOR", "\"CarlosPB\"")
     }
 
@@ -58,6 +58,10 @@ android {
         unitTests.isReturnDefaultValues = true
         // Robolectric necesita los recursos de la app (tema, fuente, cadenas).
         unitTests.isIncludeAndroidResources = true
+        // Cada clase de prueba en su propia JVM: las pruebas de interfaz con Robolectric comparten
+        // estado estático (DataStore, Room, Dispatchers.Main) si van en la misma, y fallaban a ratos.
+        // En el teléfono solo hay una Application por proceso, así que la app no tiene ese problema.
+        unitTests.all { it.forkEvery = 1 }
     }
 }
 

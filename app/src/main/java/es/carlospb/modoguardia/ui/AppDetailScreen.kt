@@ -18,6 +18,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.IosShare
+import androidx.compose.material.icons.rounded.MarkChatUnread
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PersonSearch
 import androidx.compose.material.icons.rounded.WarningAmber
@@ -55,6 +57,7 @@ fun AppDetailScreen(
     rulesVm: RulesViewModel,
     onBack: () -> Unit,
     onPickChats: (String) -> Unit,
+    onIdentify: (String) -> Unit,
     onEditKeywords: (ruleId: String?, appKey: String) -> Unit,
 ) {
     val rules by rulesVm.rules.collectAsStateWithLifecycle()
@@ -68,6 +71,9 @@ fun AppDetailScreen(
     var manual by remember { mutableStateOf(false) }
     var confirmRemove by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
+    val openApp: () -> Unit = {
+        context.packageManager.getLaunchIntentForPackage(appKey)?.let { intent -> runCatching { context.startActivity(intent) } }
+    }
 
     Column(Modifier.fillMaxSize()) {
         BackTopBar(
@@ -168,6 +174,25 @@ fun AppDetailScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PrimaryButton("Elegir chats", onClick = { onPickChats(appKey) }, icon = Icons.Rounded.Add, modifier = Modifier.weight(1f))
                 SecondaryButton("Escribir", onClick = { manual = true }, icon = Icons.Rounded.EditNote, modifier = Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+            GuardCard(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+                ListRow(
+                    title = "Identificar con un mensaje",
+                    subtitle = "¿No aparece en la lista? Alguien escribe en ese chat y Modo Guardia te dice cuál es.",
+                    leading = { IconBadge(Icons.Rounded.MarkChatUnread, Tone.ACTIVE, size = 36.dp) },
+                    onClick = { onIdentify(appKey) },
+                )
+                if (WhatsApp.isWhatsApp(appKey)) {
+                    RowDivider()
+                    ListRow(
+                        title = "Compartir el chat desde $label",
+                        subtitle = "En el chat: ⋮ → Más → Exportar chat → Sin archivos → «Vigilar en Modo Guardia». " +
+                            "Llega su nombre exacto; la conversación no se abre.",
+                        leading = { IconBadge(Icons.Rounded.IosShare, Tone.INFO, size = 36.dp) },
+                        onClick = if (installed) openApp else null,
+                    )
+                }
             }
             if (WhatsApp.isWhatsApp(appKey)) {
                 Hint(

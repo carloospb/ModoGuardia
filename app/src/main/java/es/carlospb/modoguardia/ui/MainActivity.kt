@@ -1,5 +1,6 @@
 package es.carlospb.modoguardia.ui
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -66,15 +67,64 @@ import es.carlospb.modoguardia.alarm.GuardAlarmActivity
 import es.carlospb.modoguardia.container
 import es.carlospb.modoguardia.ui.theme.GuardColors
 import es.carlospb.modoguardia.ui.theme.ModoGuardiaTheme
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    /** Pantalla pedida desde fuera (al compartir un chat con Modo Guardia). */
+    private val openRequest = MutableStateFlow<OpenRequest?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) openRequest.value = OpenRequest.from(intent)
         setContent {
-            ModoGuardiaTheme { Root() }
+            val request by openRequest.collectAsStateWithLifecycle()
+            ModoGuardiaTheme { Root(request) { openRequest.value = null } }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        OpenRequest.from(intent)?.let { openRequest.value = it }
+    }
+
+    /** Solo estas pantallas se pueden abrir desde fuera; la ruta la construye la app, nunca el intent. */
+    sealed interface OpenRequest {
+        data class Identify(val appKey: String?) : OpenRequest
+        data class App(val appKey: String) : OpenRequest
+
+        companion object {
+            fun from(intent: Intent?): OpenRequest? {
+                val app = intent?.getStringExtra(EXTRA_APP)?.takeIf { it.isNotBlank() && it.length < 200 }
+                return when (intent?.getStringExtra(EXTRA_OPEN)) {
+                    OPEN_IDENTIFY -> Identify(app)
+                    OPEN_APP -> app?.let(::App)
+                    else -> null
+                }
+            }
+        }
+    }
+
+    companion object {
+        private const val EXTRA_OPEN = "es.carlospb.modoguardia.OPEN"
+        private const val EXTRA_APP = "es.carlospb.modoguardia.APP"
+        private const val OPEN_IDENTIFY = "identify"
+        private const val OPEN_APP = "app"
+
+        fun open(context: Context, request: OpenRequest): Intent =
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(EXTRA_OPEN, if (request is OpenRequest.Identify) OPEN_IDENTIFY else OPEN_APP)
+                .putExtra(
+                    EXTRA_APP,
+                    when (request) {
+                        is OpenRequest.Identify -> request.appKey
+                        is OpenRequest.App -> request.appKey
+                    },
+                )
     }
 
     override fun onResume() {
@@ -100,9 +150,11 @@ private object Routes {
     const val APP = "app/{key}"
     const val CHATS = "chats?app={app}"
     const val KEYWORDS = "palabras?id={id}&app={app}"
+    const val IDENTIFY = "identificar?app={app}"
 
     fun app(key: String) = "app/${Uri.encode(key)}"
     fun chats(appKey: String?) = if (appKey == null) "chats" else "chats?app=${Uri.encode(appKey)}"
+    fun identify(appKey: String?) = if (appKey == null) "identificar" else "identificar?app=${Uri.encode(appKey)}"
     fun keywords(id: String?, appKey: String?) = buildString {
         append("palabras")
         val params = listOfNotNull(id?.let { "id=${Uri.encode(it)}" }, appKey?.let { "app=${Uri.encode(it)}" })
@@ -116,7 +168,7 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch() =
     initialState.destination.route in tabRoutes && targetState.destination.route in tabRoutes
 
 @Composable
-private fun Root() {
+private fun Root(openRequest: MainActivity.OpenRequest?, onOpened: () -> Unit) {
     val vm: MainViewModel = viewModel()
     val rulesVm: RulesViewModel = viewModel()
     val updateVm: UpdateViewModel = viewModel()
@@ -166,6 +218,17 @@ private fun Root() {
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
     val showBar = current == null && startRoute != Routes.ONBOARDING || current in tabRoutes
+
+    LaunchedEffect(openRequest) {
+        if (openRequest == null) return@LaunchedEffect
+        // El NavHost se monta dentro del Scaffold: se espera a que tenga su primera pantalla.
+        nav.currentBackStackEntryFlow.first()
+        when (openRequest) {
+            is MainActivity.OpenRequest.Identify -> nav.navigate(Routes.identify(openRequest.appKey)) { launchSingleTop = true }
+            is MainActivity.OpenRequest.App -> nav.navigate(Routes.app(openRequest.appKey)) { launchSingleTop = true }
+        }
+        onOpened()
+    }
 
     Scaffold(
         containerColor = GuardColors.Background,
@@ -261,6 +324,7 @@ private fun Root() {
                     rulesVm = rulesVm,
                     onBack = { nav.popBackStack() },
                     onPickChats = { appKey -> nav.navigate(Routes.chats(appKey)) },
+                    onIdentify = { appKey -> nav.navigate(Routes.identify(appKey)) },
                     onEditKeywords = { id, appKey -> nav.navigate(Routes.keywords(id, appKey)) },
                 )
             }
@@ -272,10 +336,23 @@ private fun Root() {
                     appKey = entry.arguments?.getString("app"),
                     rulesVm = rulesVm,
                     onBack = { nav.popBackStack() },
+                    onIdentify = { appKey -> nav.navigate(Routes.identify(appKey)) },
                     onAdded = { count ->
                         vm.showMessage(if (count == 1) "1 chat vigilado" else "$count chats vigilados")
                         nav.popBackStack()
                     },
+                )
+            }
+            composable(
+                Routes.IDENTIFY,
+                arguments = listOf(navArgument("app") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { entry ->
+                ChatCaptureScreen(
+                    appKey = entry.arguments?.getString("app"),
+                    rulesVm = rulesVm,
+                    onBack = { nav.popBackStack() },
+                    onOpenStatus = { nav.navigate(Routes.STATUS) { launchSingleTop = true } },
+                    onAdded = { name -> vm.showMessage("«$name» vigilado") },
                 )
             }
             composable(

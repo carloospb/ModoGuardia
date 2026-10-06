@@ -18,6 +18,7 @@ import es.carlospb.modoguardia.domain.Deduplicator
 import es.carlospb.modoguardia.domain.GuardEngine
 import es.carlospb.modoguardia.domain.RuleEdits
 import es.carlospb.modoguardia.domain.WhatsApp
+import es.carlospb.modoguardia.service.ChatCaptureStore
 import es.carlospb.modoguardia.service.DiagnosticsStore
 import es.carlospb.modoguardia.service.GuardController
 import es.carlospb.modoguardia.system.SystemStatusChecker
@@ -37,6 +38,7 @@ class AppContainer(app: Application) {
     private val database = HistoryDatabase.create(app)
     val history = HistoryRepository(database.historyDao())
     val diagnostics = DiagnosticsStore()
+    val chatCapture = ChatCaptureStore()
     val alarmController = AlarmController(app, settings, history, appScope)
     val engine = GuardEngine(
         snapshot = {

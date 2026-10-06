@@ -13,9 +13,12 @@ import es.carlospb.modoguardia.data.HistoryEntity
 import es.carlospb.modoguardia.data.SoundSource
 import es.carlospb.modoguardia.data.VolumeMode
 import es.carlospb.modoguardia.domain.CallMode
+import es.carlospb.modoguardia.domain.CaptureArrival
+import es.carlospb.modoguardia.domain.CaptureOption
 import es.carlospb.modoguardia.domain.Rule
 import es.carlospb.modoguardia.domain.RuleEdits
 import es.carlospb.modoguardia.domain.SeenChat
+import es.carlospb.modoguardia.service.CaptureSession
 import es.carlospb.modoguardia.service.DiagnosticEntry
 import es.carlospb.modoguardia.service.GuardNotificationListener
 import es.carlospb.modoguardia.service.GuardService
@@ -202,6 +205,26 @@ class RulesViewModel(app: Application) : AndroidViewModel(app) {
 
     fun addManualConversation(appKey: String, name: String, isGroup: Boolean) =
         update { RuleEdits.addManualConversation(it, appKey, name, isGroup, label(appKey), ::newId) }
+
+    /** «Identificar con un mensaje»: la espera en curso (solo en memoria). */
+    val capture: StateFlow<CaptureSession?> = c.chatCapture.session
+
+    fun startCapture(appKey: String?) = c.chatCapture.start(appKey)
+
+    fun stopCapture() = c.chatCapture.stop()
+
+    /** El chat de un aviso capturado, con su identificador de Android si lo trae. */
+    fun addCaptured(arrival: CaptureArrival, option: CaptureOption) = addConversations(
+        listOf(SeenChat(option.name, option.isGroup, arrival.receivedAt, arrival.packageName, arrival.conversationId)),
+    )
+
+    /** Chat compartido desde la app (WhatsApp «Exportar chat»): como persona, como grupo o como los dos. */
+    fun addSharedChat(appKey: String, name: String, asPerson: Boolean, asGroup: Boolean) = update { rules ->
+        var out = rules
+        if (asPerson) out = RuleEdits.addManualConversation(out, appKey, name, isGroup = false, label(appKey), ::newId)
+        if (asGroup) out = RuleEdits.addManualConversation(out, appKey, name, isGroup = true, label(appKey), ::newId)
+        out
+    }
 
     fun addCallContact(name: String, alternativeName: String?, number: String?) =
         update { RuleEdits.addCallContact(it, name, alternativeName, number, ::newId) }

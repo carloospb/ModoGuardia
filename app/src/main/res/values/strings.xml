@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Modo Guardia</string>
     <string name="listener_label">Modo Guardia · detector de avisos</string>
+    <string name="share_label">Vigilar en Modo Guardia</string>
 </resources>

@@ -20,6 +20,11 @@ para hasta que pulsas **DETENER ALARMA**.
 * **Conversaciones detectadas**: ninguna app de chat deja leer su lista de conversaciones, así que
   cada chat que manda un aviso aparece en un selector (búsqueda, Todos / Personas / Grupos,
   selección múltiple). Se guarda solo el nombre, nunca los mensajes. También se pueden escribir.
+* **Identificar un chat al momento**, sin esperar a que aparezca en la lista:
+  * **Con un mensaje** (cualquier app: WhatsApp, Telegram, Slack, Signal…): pulsas el botón, alguien
+    escribe en ese chat y Modo Guardia te dice cuál es para vigilarlo con un toque.
+  * **Compartiéndolo desde WhatsApp / WhatsApp Business**: en el chat, Exportar chat → «Vigilar en
+    Modo Guardia». Llega su nombre exacto; la conversación exportada no se abre.
 * **Llamadas**: todas, o solo **contactos elegidos** (selector oficial de Android, sin leer la
   agenda) y **números concretos**. Si no se puede saber quién llama, decide el usuario (por defecto
   despierta). Aparte, llamadas de apps (WhatsApp, Teams…). La llamada funciona con normalidad; la

@@ -73,6 +73,8 @@ class GuardNotificationListener : NotificationListenerService() {
         }
         val c = container
         c.diagnostics.record(parsed)
+        // «Identificar con un mensaje»: solo hace algo mientras el usuario espera en esa pantalla.
+        c.chatCapture.record(parsed)
         if (parsed.skipReason != null) return
         // «Conversaciones detectadas», para elegirlas al crear reglas. Solo el nombre, nunca el mensaje,
         // y solo si el usuario no lo ha desactivado en Ajustes → Privacidad.

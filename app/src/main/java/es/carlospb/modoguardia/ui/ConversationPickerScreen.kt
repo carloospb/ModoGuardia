@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.Forum
+import androidx.compose.material.icons.rounded.MarkChatUnread
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material3.FilterChip
@@ -54,7 +55,13 @@ import es.carlospb.modoguardia.ui.theme.GuardColors
  * ([appKey]) o de todas. Selección múltiple, búsqueda y categorías.
  */
 @Composable
-fun ConversationPickerScreen(appKey: String?, rulesVm: RulesViewModel, onBack: () -> Unit, onAdded: (Int) -> Unit) {
+fun ConversationPickerScreen(
+    appKey: String?,
+    rulesVm: RulesViewModel,
+    onBack: () -> Unit,
+    onIdentify: (String?) -> Unit,
+    onAdded: (Int) -> Unit,
+) {
     val chats by rulesVm.seenChats.collectAsStateWithLifecycle()
     val rules by rulesVm.rules.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
@@ -133,10 +140,10 @@ fun ConversationPickerScreen(appKey: String?, rulesVm: RulesViewModel, onBack: (
                     EmptyState(
                         icon = Icons.Rounded.Forum,
                         title = "Todavía no hemos detectado conversaciones" + (appLabel?.let { " de $it" } ?: ""),
-                        body = "Cuando recibas una notificación de una conversación, aparecerá aquí para que puedas añadirla " +
-                            "a Modo Guardia. Mientras tanto, puedes escribir su nombre.",
-                        actionLabel = "Escribir el nombre",
-                        onAction = { manual = true },
+                        body = "Cuando un chat te mande una notificación, aparecerá aquí. Para no esperar: pulsa " +
+                            "«Identificar con un mensaje» y pide que escriban en ese chat, o escribe su nombre.",
+                        actionLabel = "Identificar con un mensaje",
+                        onAction = { onIdentify(appFilter ?: appKey) },
                     )
                 }
             } else if (visible.isEmpty()) {
@@ -168,14 +175,19 @@ fun ConversationPickerScreen(appKey: String?, rulesVm: RulesViewModel, onBack: (
                     if (isSelected) selected.remove(chat) else selected.add(chat)
                 }
             }
-            if (forApp.isNotEmpty()) {
-                item {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
-                        TextButton(onClick = { manual = true }) {
-                            Icon(Icons.Rounded.EditNote, contentDescription = null, tint = GuardColors.Active)
+            item {
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (forApp.isNotEmpty()) {
+                        TextButton(onClick = { onIdentify(appFilter ?: appKey) }) {
+                            Icon(Icons.Rounded.MarkChatUnread, contentDescription = null, tint = GuardColors.Active)
                             Spacer(Modifier.width(8.dp))
-                            Text("¿No aparece? Escribe su nombre", color = GuardColors.Active, style = MaterialTheme.typography.labelLarge)
+                            Text("¿No aparece? Identificar con un mensaje", color = GuardColors.Active, style = MaterialTheme.typography.labelLarge)
                         }
+                    }
+                    TextButton(onClick = { manual = true }) {
+                        Icon(Icons.Rounded.EditNote, contentDescription = null, tint = GuardColors.Active)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Escribir su nombre", color = GuardColors.Active, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
