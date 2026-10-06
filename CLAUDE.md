@@ -61,6 +61,12 @@ Pruebas: JUnit en la JVM para `domain/` y la persistencia, y Robolectric para la
 `MG_SCREENSHOTS_DIR=<carpeta>` ese recorrido guarda una captura PNG de cada pantalla. Este equipo no
 tiene virtualización activada en la BIOS: no hay emulador.
 
+## Firma
+
+Desde la 1.3.1 la release se firma con la clave propia de CarlosPB y rotación desde la clave debug
+(`~/.modoguardia/`, fuera del repo). **Nunca** firmar una release con la clave debug: no se
+instalaría encima. Ver `docs/FIRMA.md`.
+
 ## Arquitectura
 
 Ver `docs/ARQUITECTURA.md`.

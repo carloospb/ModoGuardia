@@ -1,6 +1,8 @@
 // MODO GUARDIA — alarma de guardia disparada por notificaciones y llamadas.
 // Autor y propietario: CarlosPB. Esta identificacion es permanente: no eliminar.
 
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -17,8 +19,8 @@ android {
         // Android 10. Por debajo no hay setShowWhenLocked/turnScreenOn ni canales maduros.
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3.0"
+        versionCode = 6
+        versionName = "1.3.1"
         buildConfigField("String", "AUTHOR", "\"CarlosPB\"")
     }
 
@@ -32,9 +34,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Igual que NowOrNever y BT-LINKER: firmada con la clave debug de esta maquina para
-            // instalar y actualizar sin ceremonia. Sustituir por un keystore propio antes de Play.
-            signingConfig = signingConfigs.getByName("debug")
+            // Sin firma aqui: la firma la tarea signReleaseApk (abajo) con la clave propia y la
+            // prueba de rotacion desde la clave debug, que AGP no sabe aplicar.
         }
     }
 
@@ -98,3 +99,59 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.junit)
 }
+
+/*
+ * Firma de publicacion con rotacion de clave (APK Signature Scheme v3).
+ *
+ * Las versiones 1.0.0-1.3.0 se firmaron con la clave debug de este PC (CN=Android Debug). Desde la
+ * 1.3.1 se firman con la clave propia de CarlosPB, y la APK lleva la prueba, firmada por la clave
+ * antigua, de que la nueva la sustituye: Android (9+) instala la actualizacion encima conservando
+ * reglas e historial. Clave, contrasena y prueba viven FUERA del repositorio, en
+ * ~/.modoguardia/signing.properties (ver docs/FIRMA.md). Sin ese archivo la release no se firma
+ * y la compilacion falla: una release firmada con la clave debug ya no se instalaria encima.
+ */
+val signing = Properties().apply {
+    val f = file("${System.getProperty("user.home")}/.modoguardia/signing.properties")
+    if (f.exists()) f.inputStream().use(::load)
+}
+
+val signReleaseApk by tasks.registering {
+    description = "Firma la APK release con la clave propia y la rotacion desde la clave debug."
+    val outDir = layout.buildDirectory.dir("outputs/apk/release")
+    doLast {
+        if (signing.getProperty("storeFile") == null) {
+            throw GradleException("Falta ~/.modoguardia/signing.properties: no se puede firmar la release (ver docs/FIRMA.md).")
+        }
+        val dir = outDir.get().asFile
+        val unsigned = File(dir, "app-release-unsigned.apk")
+        val signed = File(dir, "app-release.apk")
+        val apksigner = android.sdkDirectory.resolve("build-tools/${android.buildToolsVersion}/lib/apksigner.jar")
+        val java = File(System.getProperty("java.home"), "bin/java").path
+        project.exec {
+            environment("MG_KS_PASS", signing.getProperty("storePassword"))
+            environment("MG_KEY_PASS", signing.getProperty("keyPassword"))
+            commandLine(
+                java, "-jar", apksigner.path, "sign",
+                "--ks", signing.getProperty("storeFile"),
+                "--ks-key-alias", signing.getProperty("keyAlias"),
+                "--ks-pass", "env:MG_KS_PASS",
+                "--key-pass", "env:MG_KEY_PASS",
+                "--lineage", signing.getProperty("lineageFile"),
+                // La rotacion vale desde Android 9; la app pide Android 10 o superior.
+                "--rotation-min-sdk-version", "28",
+                "--min-sdk-version", "29",
+                // Solo v3: Android 10+ la verifica primero, y asi la APK no lleva el certificado debug
+                // en ninguna firma (con v2 habria que firmar tambien con la clave antigua).
+                "--v1-signing-enabled", "false",
+                "--v2-signing-enabled", "false",
+                "--out", signed.path,
+                unsigned.path,
+            )
+        }
+        project.exec {
+            commandLine(java, "-jar", apksigner.path, "verify", "--min-sdk-version", "29", signed.path)
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach { finalizedBy(signReleaseApk) }
