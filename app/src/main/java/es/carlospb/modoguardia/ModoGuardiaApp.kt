@@ -22,6 +22,9 @@ import es.carlospb.modoguardia.service.ChatCaptureStore
 import es.carlospb.modoguardia.service.DiagnosticsStore
 import es.carlospb.modoguardia.service.GuardController
 import es.carlospb.modoguardia.system.SystemStatusChecker
+import android.util.Log
+import es.carlospb.modoguardia.service.ListenerRecovery
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +35,16 @@ import java.util.UUID
 
 /** Dependencias del proceso, creadas una vez. Sin framework de DI: el grafo es pequeño. */
 class AppContainer(app: Application) {
-    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /**
+     * Un fallo inesperado en una tarea de fondo se registra, pero NO tumba el proceso: en él viven el
+     * lector de notificaciones y la alarma, y si el proceso cae varias veces seguidas Android deja de
+     * volver a enlazar el lector.
+     */
+    val appScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, e ->
+            Log.e("ModoGuardia", "Fallo en tarea de fondo", e)
+        },
+    )
     val settings = SettingsRepository(app.guardDataStore)
     val seenChats = SeenChatsRepository(app.guardDataStore)
     private val database = HistoryDatabase.create(app)
@@ -61,6 +73,8 @@ class ModoGuardiaApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Si el proceso murió en mitad de una reconexión, el lector no puede quedarse desactivado.
+        ListenerRecovery.ensureComponentEnabled(this)
         GuardNotifications.ensureChannels(this)
         // Si el proceso murió con la alarma sonando, el volumen de alarma vuelve a su valor.
         if (AlarmState.active.value == null) VolumeRestore.restoreIfPending(this)

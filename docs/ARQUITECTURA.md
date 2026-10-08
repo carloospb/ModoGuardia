@@ -25,7 +25,7 @@ PHONE_STATE (RINGING [+ número] / OFFHOOK / IDLE) ─► PhoneStateReceiver ─
 |---|---|
 | `domain/` | Kotlin puro con pruebas JVM: `NotificationEvent`, `Rule` (+ `RuleType`), `RuleEngine` (la única lógica de «¿despierta?»), `Conversations` (grupo / persona / desconocido y sus nombres), `Calls` (`CallMode`, `PhoneNumbers`, `CallerId`), `SeenChats`, `ChatCapture` («Identificar con un mensaje»), `SharedChats` (chat compartido desde WhatsApp), `RuleEdits` (cambios de reglas sin duplicados), `WatchSummary` (resumen para el panel), `TextNormalizer`, `Deduplicator`, `GuardEngine`, `UpdatePolicy`. |
 | `data/` | `SettingsRepository` (DataStore: ajustes y reglas en JSON, compatible con lo guardado por 1.0/1.1), `RuleCodec`, `SeenChatsRepository`, `History` (Room). |
-| `service/` | `GuardNotificationListener`, `NotificationParser`, `GuardService` (FGS specialUse + revisión de salud cada minuto), `GuardController`, `DiagnosticsStore` y `ChatCaptureStore` (solo memoria). |
+| `service/` | `GuardNotificationListener`, `ListenerRecovery` (reconexión real del lector), `NotificationParser`, `GuardService` (FGS specialUse + revisión de salud cada minuto, que reconecta el lector si se cae), `GuardController`, `DiagnosticsStore` y `ChatCaptureStore` (solo memoria). |
 | `alarm/` | `AlarmController`, `AlarmService`, `AlarmPlayer` (+ `VolumeRestore`), `GuardNotifications`, `AlarmState`, `GuardAlarmActivity`. |
 | `call/` | `PhoneStateReceiver`. |
 | `receiver/` | `BootReceiver` (BOOT_COMPLETED, MY_PACKAGE_REPLACED). |

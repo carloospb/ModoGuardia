@@ -59,3 +59,8 @@ en la cadena de alarma, junto con `./gradlew testDebugUnitTest assembleDebug`.
 16. Quita el acceso a notificaciones con la guardia activa → aviso
     «MODO GUARDIA PUEDE NO FUNCIONAR CORRECTAMENTE» en menos de 1 min.
 17. Desliza para quitar la notificación «Modo Guardia activo» → vuelve en menos de 1 min.
+18. **Detector desconectado**: con la guardia activa, haz «Forzar detención» de Modo Guardia en
+    Ajustes → Apps y vuelve a abrirla. Si Estado muestra «Concedido, pero desconectado», pulsa
+    «Reconectar» → en menos de 20 s pasa a «Correcto» (o, si Android no lo devuelve, lo dice y abre
+    Ajustes). Sin tocar nada, el servicio de guardia lo reconecta solo en ~2 min y lo anota en
+    Historial. Después repite el paso 6.

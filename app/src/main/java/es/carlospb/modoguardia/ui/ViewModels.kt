@@ -30,6 +30,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import es.carlospb.modoguardia.service.ListenerRecovery
+import es.carlospb.modoguardia.domain.HistoryType
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,12 +95,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _status.value = withContext(Dispatchers.Default) { c.statusChecker.check(s, GuardService.running.value) }
     }
 
-    fun startGuard() = viewModelScope.launch { c.guardController.start() }
+    fun startGuard() = viewModelScope.launch {
+        c.guardController.start()
+        // Activar la guardia con el detector caído no serviría de nada: se intenta reconectar ya.
+        val app = getApplication<Application>()
+        if (GuardNotificationListener.isEnabled(app) && !GuardNotificationListener.connected.value) {
+            c.appScope.launch { ListenerRecovery.reconnect(app) }
+        }
+    }
 
     fun stopGuard() = viewModelScope.launch { c.guardController.stop() }
 
     fun restartGuardService() = viewModelScope.launch {
         if (!c.guardController.ensureServiceRunning()) _message.value = "Android no permitió iniciar el servicio de guardia."
+    }
+
+    /** true mientras «Reconectar» espera a que Android vuelva a enlazar el lector: evita repetirlo. */
+    private val _reconnecting = MutableStateFlow(false)
+
+    /** Reconexión real del lector (ver ListenerRecovery). Devuelve false si no lo consiguió. */
+    suspend fun reconnectListener(): Boolean {
+        if (_reconnecting.value) return true
+        _reconnecting.value = true
+        _message.value = "Reconectando el acceso a notificaciones… (unos segundos)"
+        val result = try {
+            ListenerRecovery.reconnect(getApplication())
+        } finally {
+            _reconnecting.value = false
+        }
+        refreshStatusNow()
+        _message.value = when (result) {
+            ListenerRecovery.Result.RECONNECTED, ListenerRecovery.Result.ALREADY_CONNECTED -> "Acceso a notificaciones reconectado"
+            ListenerRecovery.Result.NO_ACCESS -> "Falta conceder el acceso a notificaciones"
+            ListenerRecovery.Result.FAILED -> "Android no lo ha reconectado: desactiva y activa el acceso de Modo Guardia"
+        }
+        if (result == ListenerRecovery.Result.RECONNECTED && settings.value?.guardActive == true) {
+            c.history.log(HistoryType.GUARD_RESTORED, "Acceso a notificaciones reconectado", "Reconectado desde Estado del sistema.")
+        }
+        return result != ListenerRecovery.Result.FAILED && result != ListenerRecovery.Result.NO_ACCESS
     }
 
     fun testAlarm(delaySeconds: Int) {

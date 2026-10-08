@@ -34,7 +34,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import es.carlospb.modoguardia.service.GuardNotificationListener
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import es.carlospb.modoguardia.system.CheckItem
 import es.carlospb.modoguardia.system.CheckLevel
 import es.carlospb.modoguardia.system.FixAction
@@ -150,6 +151,8 @@ fun rememberFixHandler(vm: MainViewModel): (FixAction) -> Unit {
         afterResult(granted, Manifest.permission.READ_CALL_LOG, FixAction.APP_DETAILS)
     }
 
+    val scope = rememberCoroutineScope()
+
     return remember(context, vm) {
         { action ->
             when (action) {
@@ -165,9 +168,9 @@ fun rememberFixHandler(vm: MainViewModel): (FixAction) -> Unit {
                 FixAction.PHONE_PERMISSION -> phoneLauncher.launch(Manifest.permission.READ_PHONE_STATE)
                 FixAction.CALL_LOG_PERMISSION -> callLogLauncher.launch(Manifest.permission.READ_CALL_LOG)
                 FixAction.RESTART_GUARD_SERVICE -> vm.restartGuardService()
-                FixAction.REBIND_LISTENER -> {
-                    GuardNotificationListener.requestRebind(context)
-                    vm.refreshStatus()
+                FixAction.REBIND_LISTENER -> scope.launch {
+                    // Si Android no lo devuelve, lo único que queda es quitar y dar el acceso: se abre esa pantalla.
+                    if (!vm.reconnectListener()) SystemSettings.open(context, FixAction.REBIND_LISTENER)
                 }
                 else -> SystemSettings.open(context, action)
             }

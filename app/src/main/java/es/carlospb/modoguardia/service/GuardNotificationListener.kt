@@ -39,8 +39,12 @@ class GuardNotificationListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        _connected.value = false
-        if (instance?.get() === this) instance = null
+        // Solo si no hay ya otra instancia conectada (un enlace nuevo no debe quedar marcado como caído).
+        val current = instance?.get()
+        if (current == null || current === this) {
+            instance = null
+            _connected.value = false
+        }
         val c = container
         c.appScope.launch {
             if (c.settings.current().guardActive) {
@@ -48,7 +52,7 @@ class GuardNotificationListener : NotificationListenerService() {
                 c.history.log(
                     HistoryType.WARNING,
                     "Acceso a notificaciones desconectado",
-                    "Se ha pedido a Android que vuelva a conectarlo. Comprueba Estado del sistema.",
+                    "Modo Guardia intentará reconectarlo solo. Comprueba Estado del sistema.",
                 )
             }
         }
@@ -115,7 +119,11 @@ class GuardNotificationListener : NotificationListenerService() {
         fun isEnabled(context: Context): Boolean =
             NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
-        /** API oficial para pedir al sistema que vuelva a enlazar el lector. */
+        /**
+         * API oficial para pedir al sistema que vuelva a enlazar el lector. OJO: Android solo la atiende
+         * si la app desconectó el lector con requestUnbind(); para un enlace perdido por el sistema
+         * no hace nada. La reconexión de verdad está en [ListenerRecovery].
+         */
         fun requestRebind(context: Context) {
             if (!isEnabled(context)) return
             try {

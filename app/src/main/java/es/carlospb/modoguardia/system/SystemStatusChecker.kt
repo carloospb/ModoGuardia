@@ -88,9 +88,10 @@ class SystemStatusChecker(private val context: Context) {
                 FixAction.NOTIFICATION_ACCESS, "Conceder acceso",
             )
             !connected -> CheckItem(
-                "notification_access", "Acceso a notificaciones", CheckLevel.WARNING, "Concedido, pero desconectado",
-                "Android ha desconectado el detector. Se puede pedir que lo reconecte; si no vuelve, " +
-                    "desactiva y activa el acceso en Ajustes.",
+                "notification_access", "Acceso a notificaciones", CheckLevel.ERROR, "Concedido, pero desconectado",
+                "Android ha desconectado el detector: mientras siga así no se ve ningún aviso. «Reconectar» " +
+                    "obliga a Android a volver a enlazarlo (tarda unos segundos). Si no vuelve, en Ajustes " +
+                    "desactiva y activa el acceso de Modo Guardia.",
                 FixAction.REBIND_LISTENER, "Reconectar",
             )
             else -> CheckItem("notification_access", "Acceso a notificaciones", CheckLevel.OK, "Correcto")

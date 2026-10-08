@@ -10,6 +10,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import es.carlospb.modoguardia.AppContainer
 import es.carlospb.modoguardia.alarm.GuardNotifications
 import es.carlospb.modoguardia.container
 import es.carlospb.modoguardia.domain.HistoryType
@@ -44,6 +45,10 @@ class GuardService : Service() {
 
     /** Último texto publicado en la notificación de estado: no se vuelve a publicar si no cambia. */
     private var lastStatusText: String? = null
+
+    /** Desde cuándo el lector está concedido pero desconectado (0 si está bien). */
+    private var listenerDownSince = 0L
+    private var lastRecoveryAt = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -89,9 +94,7 @@ class GuardService : Service() {
             stopSelf()
             return false
         }
-        if (GuardNotificationListener.isEnabled(this) && !GuardNotificationListener.connected.value) {
-            GuardNotificationListener.requestRebind(this)
-        }
+        superviseListener(c)
         val status = c.statusChecker.check(settings, guardServiceRunning = true)
         val critical = status.items.filter { it.level == CheckLevel.ERROR }
         val warnings = status.items.filter { it.level == CheckLevel.WARNING }
@@ -129,6 +132,45 @@ class GuardService : Service() {
         return true
     }
 
+    /**
+     * Lector concedido pero desconectado con la guardia activa: no se ve ningún aviso, es el peor
+     * fallo posible. Si sigue así pasado [RECOVERY_AFTER_MS], se fuerza la reconexión
+     * ([ListenerRecovery]); como mucho cada [RECOVERY_INTERVAL_MS], para no desactivar el componente
+     * en bucle si Android no lo devuelve.
+     */
+    private fun superviseListener(c: AppContainer) {
+        if (!GuardNotificationListener.isEnabled(this) || GuardNotificationListener.connected.value) {
+            listenerDownSince = 0L
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (listenerDownSince == 0L) {
+            // Puede ser un enlace en camino (el proceso acaba de arrancar): se da un margen.
+            listenerDownSince = now
+            GuardNotificationListener.requestRebind(this)
+            return
+        }
+        if (now - listenerDownSince < RECOVERY_AFTER_MS || now - lastRecoveryAt < RECOVERY_INTERVAL_MS) return
+        lastRecoveryAt = now
+        val app = applicationContext
+        c.appScope.launch {
+            when (ListenerRecovery.reconnect(app)) {
+                ListenerRecovery.Result.RECONNECTED -> c.history.log(
+                    HistoryType.GUARD_RESTORED,
+                    "Acceso a notificaciones reconectado",
+                    "Android había desconectado el detector; Modo Guardia lo ha reconectado solo.",
+                )
+                ListenerRecovery.Result.FAILED -> c.history.log(
+                    HistoryType.WARNING,
+                    "No se pudo reconectar el acceso a notificaciones",
+                    "Mientras siga así no se detecta ningún aviso. Ajustes → Acceso a notificaciones → " +
+                        "desactiva y activa Modo Guardia.",
+                )
+                else -> Unit
+            }
+        }
+    }
+
     override fun onDestroy() {
         _running.value = false
         scope.cancel()
@@ -138,6 +180,8 @@ class GuardService : Service() {
     companion object {
         private const val TAG = "GuardService"
         private const val HEALTH_INTERVAL_MS = 60_000L
+        private const val RECOVERY_AFTER_MS = 50_000L
+        private const val RECOVERY_INTERVAL_MS = 10 * 60_000L
 
         private val _running = MutableStateFlow(false)
         val running: StateFlow<Boolean> = _running.asStateFlow()

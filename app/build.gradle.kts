@@ -19,8 +19,8 @@ android {
         // Android 10. Por debajo no hay setShowWhenLocked/turnScreenOn ni canales maduros.
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.3.1"
+        versionCode = 7
+        versionName = "1.3.2"
         buildConfigField("String", "AUTHOR", "\"CarlosPB\"")
     }
 
